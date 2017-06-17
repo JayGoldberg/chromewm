@@ -1,0 +1,9 @@
+# Write all Javascript files to be compiled bellow
+# use relative paths to build.sh script
+
+# Javascript
+background.js
+
+# Statics
+manifest.json
+icon.png
