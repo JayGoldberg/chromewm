@@ -2,8 +2,8 @@
 # use relative paths to build.sh script
 
 # Javascript
-background.js
+js/background.js
 
 # Statics
-manifest.json
-icon.png
+static/manifest.json
+static/icon.png

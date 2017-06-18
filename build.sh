@@ -15,8 +15,12 @@ COMPILED_PATH=bin
 ###################################
 #  Do not modify bellow this line #
 ###################################
+NC='\033[0m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+
 JS_COMPILER_PARAMETERS="\
---compilation_level=ADVANCED \
+--compilation_level=SIMPLE \
 --jscomp_error=missingRequire \
 --jscomp_warning=accessControls \
 --jscomp_warning=constantProperty \
@@ -26,11 +30,11 @@ JS_COMPILER_PARAMETERS="\
 --jscomp_warning=extraRequire \
 --jscomp_warning=inferredConstCheck \
 --jscomp_warning=missingReturn \
---jscomp_warning=newCheckTypes \
 --jscomp_warning=functionParams \
 --jscomp_warning=missingOverride \
 --jscomp_warning=missingPolyfill \
 --jscomp_warning=missingSourcesWarnings \
+--jscomp_warning=newCheckTypes \
 --jscomp_warning=unusedLocalVariables \
 --jscomp_warning=unusedPrivateMembers \
 --jscomp_warning=underscore \
@@ -41,29 +45,30 @@ JS_COMPILER_PARAMETERS="\
 JS_BUILDER_PARAMETERS="\
 --compiler_jar=$JS_CLOSURE_COMPILER_PATH \
 --root=$CLOSURE_LIBRARY_PATH \
---root=. \
+--root=js/ \
 --output_mode=compiled \
 --compiler_flags=\"$JS_COMPILER_PARAMETERS\""
 
 
 while read TARGET; do
-  case $TARGET in
-    # Ignore if it's a comment
-    \#*)
-      continue
-      ;;
+  [[ "$TARGET" == "#"* || -z "$TARGET" ]] && continue
+  [ ! -f $TARGET ] && echo -e "${RED}ERROR:${NC} File $TARGET doesn't exist" \
+      && continue
+  FILENAME=`basename $TARGET`
+  # Compiles only if the source file changed.
+  [ ! $TARGET -nt $COMPILED_PATH/$FILENAME ] && continue
 
+  case $TARGET in
     # Compile if it's a JavaScript file
     *.js)
-      echo "Compiling $TARGET"
-      BUILD_TARGET=" --input=$TARGET --output_file=$COMPILED_PATH/$TARGET"
+      echo -e "${GREEN}Compiling${NC} $TARGET"
+      BUILD_TARGET=" --input=$TARGET --output_file=$COMPILED_PATH/$FILENAME"
       BUILD_COMMAND="$CLOSURE_BUILDER_PATH $JS_BUILDER_PARAMETERS $BUILD_TARGET"
       eval $BUILD_COMMAND
       ;;
-
-    # Copy everything else unless it's an empty file in BUILD_TARGETS)
+    # Copy everything else
     ?*)
-      echo "Coping $TARGET"
-      cp $TARGET $COMPILED_PATH/$TARGET
+      echo -e "${GREEN}Coping${NC} $TARGET"
+      cp $TARGET $COMPILED_PATH/$FILENAME
   esac
 done < BUILD_TARGETS

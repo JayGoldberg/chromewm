@@ -42,6 +42,7 @@
   },
   "permissions": [
     "tabs",
-    "storage"
+    "storage",
+    "system.display"
   ]
 }
