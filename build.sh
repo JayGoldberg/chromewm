@@ -29,8 +29,8 @@ JS_COMPILER_PARAMETERS="\
 --jscomp_warning=deprecatedAnnotations \
 --jscomp_warning=extraRequire \
 --jscomp_warning=inferredConstCheck \
---jscomp_warning=missingReturn \
 --jscomp_warning=functionParams \
+--jscomp_warning=missingReturn \
 --jscomp_warning=missingOverride \
 --jscomp_warning=missingPolyfill \
 --jscomp_warning=missingSourcesWarnings \
@@ -38,9 +38,13 @@ JS_COMPILER_PARAMETERS="\
 --jscomp_warning=unusedLocalVariables \
 --jscomp_warning=unusedPrivateMembers \
 --jscomp_warning=underscore \
+--jscomp_off=reportUnknownTypes \
+--jscomp_off=missingProperties \
 --externs=$JS_CHROME_EXTENSIONS_API \
 --hide_warnings_for=goog"
-
+#--jscomp_off=unknownDefines \
+#--jscomp_off=undefinedVars \
+#--jscomp_off=undefinedNames \
 # TODO: Replace closure builder by compiler using dependency_mode
 JS_BUILDER_PARAMETERS="\
 --compiler_jar=$JS_CLOSURE_COMPILER_PATH \
@@ -56,7 +60,8 @@ while read TARGET; do
       && continue
   FILENAME=`basename $TARGET`
   # Compiles only if the source file changed.
-  [ ! $TARGET -nt $COMPILED_PATH/$FILENAME ] && continue
+  # TODO(): Compile if dependencies changed
+  #  [ ! $TARGET -nt $COMPILED_PATH/$FILENAME ] && continue
 
   case $TARGET in
     # Compile if it's a JavaScript file

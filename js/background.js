@@ -6,15 +6,18 @@
 goog.provide('chromews.background');
 
 goog.require('chromews.window');
-goog.require('goog.array');
+// goog.require('goog.array');
 
-
+const DEBUG = true; // Logs every Method execution.
+const DEBUG2 = true; // Logs data verifications
 
 /**
  * @desc Defines main object
  * @constructor @export
  */
 chromews.background = function() {
+  /** @type {chromews.window} window */
+  this.window = new chromews.window();
 }
 
 
@@ -23,11 +26,10 @@ chromews.background = function() {
 */
 chromews.background.prototype.init = function() {
   /** Initializes properties */
-  this.window = new chromews.window();
 
   /** Initializes Listeners */
   chrome.commands.onCommand.addListener( (command) => {
-      this.handleCommand(command)
+      this.handleCommand(command);
     });
 }
 
@@ -36,17 +38,17 @@ chromews.background.prototype.init = function() {
 * @desc Gets the display where the window is.
 * @param {requestCallback} callback
 */
-chromews.background.prototype.getDisplay = function (callback) {
-  chrome.system.display.getInfo( (displays) => {
-    chrome.windows.getLastFocused( (window_) => {
-      callback(goog.array.find(displays, (display, indx, list) => {
-        return (window_.left < (display.workArea.left + display.workArea.width))
-          && (window_.top < (display.workArea.top + display.workArea.height))
-        })
-      );
-    });
-  });
-}
+// chromews.background.prototype.getDisplay = function (callback) {
+//   chrome.system.display.getInfo( (displays) => {
+//     chrome.windows.getLastFocused( (window_) => {
+//       callback(goog.array.find(displays, (display, indx, list) => {
+//         return (window_.left < (display.workArea.left + display.workArea.width))
+//           && (window_.top < (display.workArea.top + display.workArea.height))
+//         })
+//       );
+//     });
+//   });
+// }
 
 
 /**
@@ -54,27 +56,36 @@ chromews.background.prototype.getDisplay = function (callback) {
 * @param {string} command
 */
 chromews.background.prototype.handleCommand = function(command) {
+  DEBUG && console.log('INFO: background.handleCommand()');
   var newCoordinates_ = {};
-  switch(command) {
-    case 'tile-left':
-      newCoordinates_.left = 0;
-      newCoordinates_.width = Math.round(screen.availWidth / 2);
-      this.handleWindow(newCoordinates_);
-      break;
-    case 'tile-right':
-      break;
-    case 'tile-up':
-      newCoordinates_.top = 0;
-      newCoordinates_.height = Math.round(screen.availHeight / 2);
-      this.handleWindow(newCoordinates_);
-      break;
-    case 'tile-down':
-      this.getWindowState((state) => {console.log(state);});
-  //    this.getDisplay((display) => {console.log(display);});
-      break;
-    default:
-      console.log('Unrecognized command: ', command);
-  };
+  this.window.getPropertiesbyFocus()
+    .then( (properties) => {
+      switch(command) {
+        case 'tile-left':
+          newCoordinates_.left = 0;
+          newCoordinates_.width = Math.round(screen.availWidth / 2);
+          this.window.setProperties(newCoordinates_)
+            .then( () => {
+              this.window.Update();
+          });
+          break;
+        case 'tile-right':
+          break;
+        case 'tile-up':
+          newCoordinates_.top = 0;
+          newCoordinates_.height = Math.round(screen.availHeight / 2);
+          this.window.setProperties(newCoordinates_)
+            .then( () => {
+              this.window.Update();
+          });
+          break;
+        case 'tile-down':
+          this.getWindowState((state) => {console.log(state);});
+          break;
+        default:
+          console.log('Unrecognized command: ', command);
+      };
+    });
 }
 
 /**
@@ -92,40 +103,27 @@ chromews.background.prototype.getWindowState = function(callback) {
     horizontal: Math.round(screen.availWidth / 2),
     vertical: Math.round(screen.availHeight / 2)
   };
-  console.log('Boundaries: ', tilingBoundaries);
 
-  chrome.windows.getLastFocused( (window_) => {
-    console.log(window_);
-    if (window_.width == tilingBoundaries.horizontal) {
-      if (window_.left == tilingBoundaries.horizontal) {
-        tilingState.horizontal = 'right';
-      } else {
-        tilingState.horizontal = 'left';
+  // chrome.windows.getLastFocused( (window_) => {
+  this.window.getPropertiesbyFocus()
+    .then( (properties) => {
+      console.log('window Properties: ', properties);
+      if (properties.width == tilingBoundaries.horizontal) {
+        if (properties.left == tilingBoundaries.horizontal) {
+          tilingState.horizontal = 'right';
+        } else {
+          tilingState.horizontal = 'left';
+        };
       };
-    };
-    if (window_.height == tilingBoundaries.vertical) {
-      if (window_.top == tilingBoundaries.vertical) {
-        tilingState.vertical = 'bottom';
-      } else {
-        tilingState.vertical = 'top';
+      if (properties.height == tilingBoundaries.vertical) {
+        if (properties.top == tilingBoundaries.vertical) {
+          tilingState.vertical = 'bottom';
+        } else {
+          tilingState.vertical = 'top';
+        };
       };
-    };
-    callback(tilingState);
+      callback(tilingState);
   });
-}
-
-/**
-* @desc Handle window
-* @param {Object} newCoordinates_
-*/
-chromews.background.prototype.handleWindow = function(newCoordinates_) {
-  chrome.windows.getLastFocused( (window_) => {
-    if (window_.state != 'normal') {
-      chrome.windows.update(window_.id, {state: 'normal'});
-    };
-    chrome.windows.update(window_.id, newCoordinates_);
-    }
-  );
 }
 
 
