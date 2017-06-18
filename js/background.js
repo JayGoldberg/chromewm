@@ -5,7 +5,9 @@
 
 goog.provide('chromews.background');
 
+goog.require('chromews.window');
 goog.require('goog.array');
+
 
 
 /**
@@ -20,8 +22,8 @@ chromews.background = function() {
 * @desc Initializes the Main object
 */
 chromews.background.prototype.init = function() {
-  /** Initializes system properties */
-
+  /** Initializes properties */
+  this.window = new chromews.window();
 
   /** Initializes Listeners */
   chrome.commands.onCommand.addListener( (command) => {
@@ -67,8 +69,8 @@ chromews.background.prototype.handleCommand = function(command) {
       this.handleWindow(newCoordinates_);
       break;
     case 'tile-down':
-      // this.getWindowState((state) => {console.log(state);});
-      this.getDisplay((display) => {console.log(display);});
+      this.getWindowState((state) => {console.log(state);});
+  //    this.getDisplay((display) => {console.log(display);});
       break;
     default:
       console.log('Unrecognized command: ', command);
