@@ -13,7 +13,7 @@
  * @constructor @export
  */
  chromews.window = function() {
-   /** @type {Object<string, number|string>} properties */
+   /** @type {Object<string, (number|string>)} properties */
    this.properties = {
      height: 0,
      id: 0,
@@ -21,7 +21,9 @@
      state: 'normal',
      top: 0,
      width: 0
-   }
+   };
+  /** @type {number} workspace - The virtual workspace it belongs to */
+   this.workspace = 0;
  }
 
 
@@ -58,9 +60,9 @@ chromews.window.prototype.getPropertiesbyFocus = function() {
     chrome.windows.getLastFocused( (window_) => {
 //TODO(): Why saving?
       this.setProperties(window_)
-        .then(
-            (properties) => {resolve(properties);},
-            (err) => {reject(err);}
+        .then(resolve)
+            // (properties) => {resolve(properties);},
+            // (err) => {reject(err);} //check
         );
       });
     });
