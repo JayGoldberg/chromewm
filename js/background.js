@@ -5,7 +5,6 @@
 
 goog.provide('chromews.background');
 
-// goog.require('chromews.window');
 goog.require('goog.array');
 goog.require('goog.object');
 goog.require('goog.string');
@@ -18,9 +17,7 @@ const DEBUG2 = true; // Logs data changes.
  * @constructor @export
  */
 chromews.background = function() {
-  // this.windows = [{}];
   this.workspaces = [[]];
-  // this.displays= [{}];
 }
 
 
@@ -37,7 +34,8 @@ chromews.background.prototype.init = function() {
         state: window_.state
       });
     });
-  DEBUG2 && console.log('DATA: this.workspaces', this.workspaces);
+  DEBUG2 && console.log('DATA: background.init: this.workspaces',
+      this.workspaces);
   });
 
   /** Initializes Listeners */
@@ -45,8 +43,6 @@ chromews.background.prototype.init = function() {
       this.handleCommand(command);
     });
 }
-
-
 
 
 /** DONE
@@ -74,58 +70,78 @@ chromews.background.prototype.getDisplayWorkArea = function (windowId) {
 }
 
 
-/** DONE
- * @desc Gets the id of the window in focus
- * @return {Promise}
- */
-chromews.background.prototype.getFocusedWindowId = function() {
-  return new Promise((resolve, reject) => {
-    chrome.windows.getLastFocused((window_) => {
-      if (goog.object.containsKey(window_, 'id')) {
-        resolve(window_.id);
-      } else {
-        reject(Error('Unable to get focused window id'));
-      }
-    });
-  });
-}
-
-
 /**
  * @desc Tiles window
  * @param {string} movement
  */
 chromews.background.prototype.tileWindow = function(movement) {
   DEBUG && console.log('INFO: background.tileWindow(',movement,')');
-  var newCoordinates = {};
-  this.getFocusedWindowId().then( (id) => {
-    this.getDisplayWorkArea(id).then( (workArea) => {
+  var newSize = {};
+  chrome.windows.getLastFocused((window_) => {
+    this.getDisplayWorkArea(window_.id).then((workArea) => {
+      var tileSize = {
+        height: Math.round(workArea.height/2),
+        width: Math.round(workArea.width/2)
+      };
+      var workAreaCenter = {
+        h: workArea.left + tileSize.width,
+        v: workArea.top + tileSize.height
+      };
       switch(movement) {
         case 'tile-left':
-          newCoordinates.left = workArea.left;
-          newCoordinates.width = Math.round(workArea.width/2);
+          newSize.left = workArea.left;
+          if (window_.left == workAreaCenter.h && window_.width == tileSize.width) {
+            newSize.width = workArea.width;
+          } else {
+            newSize.width = tileSize.width;
+          }
           break;
         case 'tile-right':
-          newCoordinates.left = workArea.left + Math.round(workArea.width/2);
-          newCoordinates.width = Math.round(workArea.width/2);
+          if (window_.left == workArea.left && window_.width == tileSize.width) {
+            newSize.width = workArea.width;
+          } else {
+            newSize.left = workAreaCenter.h;
+            newSize.width = tileSize.width;
+          }
           break;
         case 'tile-up':
-          newCoordinates.top = workArea.top;
-          newCoordinates.height = Math.round(workArea.height/2);
+          newSize.top = workArea.top;
+          if (window_.height == tileSize.height) {
+            if (window_.top == workArea.top) {
+              newSize = {state: 'maximized'};
+            } else if (window_.top == workAreaCenter.v) {
+            newSize.height = workArea.height;
+            }
+          } else {
+            newSize.height = tileSize.height;
+          }
           break;
         case 'tile-down':
-          newCoordinates.top = workArea.top + Math.round(workArea.height/2);
-          newCoordinates.height = Math.round(workArea.height/2);
+          if (window_.top == workArea.top && window_.height == tileSize.height) {
+            newSize.height = workArea.height;
+          } else {
+            newSize.height = tileSize.height;
+            newSize.top = workAreaCenter.v;
+          }
           break;
         default:
           console.log('ERROR: Unrecognized command recieved in tileWindow: ',
               movement);
+          return;
       };
-      DEBUG2 && console.log('INFO: Tiling window to coordinates: ',
-          newCoordinates);
-      chrome.windows.update(id, newCoordinates);
+
+      DEBUG2 && console.log('DATA: background.tileWindow: ',
+          'window_:',window_,
+          'workArea:', workArea,
+          'workAreaCenter:', workAreaCenter,
+          'newSize:', newSize
+          );
+
+      if (window_.state == 'maximized') {
+        chrome.windows.update(window_.id, {state: 'normal'});
       }
-    );
+      chrome.windows.update(window_.id, newSize);
+    });
   });
 }
 
@@ -145,57 +161,6 @@ chromews.background.prototype.handleCommand = function(command) {
   }
 }
 
-
-/**
-* @desc Returns current tiling state of the window
-//TODO(): Multiple screens
-//TODO(): If not maximized, but flotting in the screen
-*/
-chromews.background.prototype.getWindowState = function(callback) {
-  var tilingState = {
-    horizontal: 'full',
-    vertical: 'full'
-  };
-  /** @type {Object} tilingBoundaries */
-  var tilingBoundaries = {
-    horizontal: Math.round(screen.availWidth / 2),
-    vertical: Math.round(screen.availHeight / 2)
-  };
-
-  // chrome.windows.getLastFocused( (window_) => {
-  this.window.getPropertiesbyFocus()
-    .then( (properties) => {
-      console.log('window Properties: ', properties);
-      if (properties.width == tilingBoundaries.horizontal) {
-        if (properties.left == tilingBoundaries.horizontal) {
-          tilingState.horizontal = 'right';
-        } else {
-          tilingState.horizontal = 'left';
-        };
-      };
-      if (properties.height == tilingBoundaries.vertical) {
-        if (properties.top == tilingBoundaries.vertical) {
-          tilingState.vertical = 'bottom';
-        } else {
-          tilingState.vertical = 'top';
-        };
-      };
-      callback(tilingState);
-  });
-}
-
-// /**
-// * @desc adds Window to this.windows
-// * @param {Object} window_
-// */
-// chromews.background.prototype.addWindow = function(window_) {
-//   DEBUG && console.log('INFO: background.addWindow()');
-//   var newWindow = new chromews.window();
-//   return new Promise((resolve, reject) => {
-//     newWindow.setProperties(window_)
-//       .then( this.windows.push(newWindow)
-//   })
-// }
 
 /**
  * Create and start extension
