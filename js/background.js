@@ -3,7 +3,7 @@
  * @author EduCampi
  */
 
-goog.provide('chromews.background');
+goog.provide('chromewm.background');
 
 goog.require('goog.array');
 goog.require('goog.object');
@@ -16,7 +16,7 @@ const DEBUG2 = true; // Logs data changes.
  * @desc Defines main object
  * @constructor @export
  */
-chromews.background = function() {
+chromewm.background = function() {
   this.workspaces = [[]];
 }
 
@@ -24,7 +24,7 @@ chromews.background = function() {
 /**
 * @desc Initializes the Main object
 */
-chromews.background.prototype.init = function() {
+chromewm.background.prototype.init = function() {
   /** Initializes properties */
   var currentWorkspace = 0;
   chrome.windows.getAll((windows_) => {
@@ -50,7 +50,7 @@ chromews.background.prototype.init = function() {
 * @param {!number} windowId
 * @return {Promise}
 */
-chromews.background.prototype.getDisplayWorkArea = function (windowId) {
+chromewm.background.prototype.getDisplayWorkArea = function (windowId) {
   var displayInFocus = {};
   return new Promise((resolve, reject) => {
     chrome.system.display.getInfo( (displays) => {
@@ -74,7 +74,7 @@ chromews.background.prototype.getDisplayWorkArea = function (windowId) {
  * @desc Tiles window
  * @param {string} movement
  */
-chromews.background.prototype.tileWindow = function(movement) {
+chromewm.background.prototype.tileWindow = function(movement) {
   DEBUG && console.log('INFO: background.tileWindow(',movement,')');
   var newSize = {};
   chrome.windows.getLastFocused((window_) => {
@@ -150,7 +150,7 @@ chromews.background.prototype.tileWindow = function(movement) {
 * @desc Handles command recieved
 * @param {string} command
 */
-chromews.background.prototype.handleCommand = function(command) {
+chromewm.background.prototype.handleCommand = function(command) {
   DEBUG && console.log('INFO: background.handleCommand(',command,')');
   if (goog.string.startsWith(command, 'tile-')) {
     this.tileWindow(command);
@@ -165,6 +165,6 @@ chromews.background.prototype.handleCommand = function(command) {
 /**
  * Create and start extension
 */
-/** @type {chromews.background} backgroundMain */
-var backgroundMain = new chromews.background();
+/** @type {chromewm.background} backgroundMain */
+var backgroundMain = new chromewm.background();
 backgroundMain.init();
