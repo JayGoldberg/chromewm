@@ -4,6 +4,9 @@
 # Javascript
 js/background.js
 
+# HTMLs
+html/options.html
+
 # Statics
 static/manifest.json
 static/icon.png

@@ -17,31 +17,108 @@ const DEBUG2 = true; // Logs data changes.
  * @constructor @export
  */
 chromewm.background = function() {
-  this.workspaces = [[]];
+
+  /** @type {Array} windows */
+  this.windows = [];
+  /** @type {number} maxWorkspaces */
+  this.maxWorkspaces;
+  /** @type {number} currentWorkspace */
+  this.currentWorkspace;
 }
 
-
+/** @type {Array} workspaces */
 /**
 * @desc Initializes the Main object
 */
 chromewm.background.prototype.init = function() {
   /** Initializes properties */
-  var currentWorkspace = 0;
-  chrome.windows.getAll((windows_) => {
-    goog.array.forEach((windows_), (window_,i,a) => {
-      this.workspaces[currentWorkspace].push({
-        id: window_.id,
-        state: window_.state
-      });
-    });
-  DEBUG2 && console.log('DATA: background.init: this.workspaces',
-      this.workspaces);
-  });
+  this.currentWorkspace = 0;
+  this.maxWorkspaces = 3;
 
   /** Initializes Listeners */
   chrome.commands.onCommand.addListener( (command) => {
       this.handleCommand(command);
     });
+}
+
+
+/**
+ * @desc Populates this.workspaces with windows in currentWorkspace
+ * @return {Promise}
+*/
+chromewm.background.prototype.getWorkspaceWindows = function() {
+  return new Promise((resolve, reject) => {
+    chrome.windows.getAll((windows_) => {
+      goog.array.forEach((windows_), (window_,i,a) => {
+        if (!goog.array.find(this.windows, (w,i,a) => {
+            return w.id == window_.id;})) {
+          this.windows.push({
+            id: window_.id,
+            state: window_.state,
+            workspace: this.currentWorkspace
+          });
+        }
+      });
+      DEBUG2 && console.log("DATA: getWorkspaceWindows:", this.windows);
+      resolve();
+    });
+  });
+}
+
+
+/**
+ * @desc Switches to new workspace
+ * @param {string} command
+*/
+chromewm.background.prototype.switchWorkspace = function(command) {
+  var newWorkspace = this.currentWorkspace;
+  if (command == "ws-next" && this.currentWorkspace != this.maxWorkspaces-1) {
+    newWorkspace = this.currentWorkspace + 1;
+  } else if (command == "ws-prev" && this.currentWorkspace != 0) {
+    newWorkspace = this.currentWorkspace - 1;
+  }
+
+  if (newWorkspace != this.currentWorkspace) {
+    var tempArray = [];
+    this.getWorkspaceWindows().then( () => {
+
+      tempArray = goog.array.filter(this.windows, (e,i,a) => {
+        return e.workspace == this.currentWorkspace;
+      });
+
+
+
+      DEBUG1 && console.log('Leaving Workspace:',this.currentWorkspace);
+      DEBUG2 && console.log('Hiding windows ', tempArray);
+
+
+
+      tempArray = goog.array.filter(this.windows, (e,i,a) => {
+        return e.workspace == newWorkspace;
+      });
+      DEBUG1 && console.log('Entering Workspace:', newWorkspace);
+      DEBUG2 && console.log('Showing windows ', tempArray);
+
+      this.currentWorkspace = newWorkspace;
+    });
+  }
+
+}
+
+
+/**
+ * @desc Returns all windows from this.windows in the provided workspace
+ * @param {number} workspace - The workspace number
+ * @return {Promise}
+*/
+chromewm.background.protype.getThisWindowsByWorkspace = function(workspace) {
+  return Promise((resolve, reject) => {
+    tempArray = goog.array.filter(this.windows, (e,i,a) => {
+        return e.workspace == workspace;
+      });
+    if (!tempArray) {resolve(tempArray);}
+    else { reject()}
+  });
 }
 
 
@@ -156,8 +233,9 @@ chromewm.background.prototype.handleCommand = function(command) {
     this.tileWindow(command);
     return;
   }
-  if (command == 'debug') {
-    console.log('DEBUG!!!');
+  if (goog.string.startsWith(command, 'ws-')) {
+    this.switchWorkspace(command);
+    return;
   }
 }
 

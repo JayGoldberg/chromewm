@@ -61,7 +61,7 @@ while read TARGET; do
   FILENAME=`basename $TARGET`
   # Compiles only if the source file changed.
   # TODO(): Compile if dependencies changed
-  #  [ ! $TARGET -nt $COMPILED_PATH/$FILENAME ] && continue
+ [ ! $TARGET -nt $COMPILED_PATH/$FILENAME ] && continue
 
   case $TARGET in
     # Compile if it's a JavaScript file

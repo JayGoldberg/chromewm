@@ -1,15 +1,18 @@
 {
   "manifest_version": 2,
-  "name": "Chrome Snap",
-  "description": "This extension allows to snap Chrome windows and emulate workspaces",
-  "version": "0.5",
-
+  "name": "Chrome Windows Manager",
+  "description": "This extension allows to tile Chrome windows and emulates workspaces",
+  "version": "0.6",
   "icons":{
     "128": "icon.png"
   },
   "browser_action": {
     "default_icon": "icon.png",
     "default_title": "Chrome Snap"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "chrome_style": true
   },
   "background": {
     "scripts": ["background.js"]
@@ -18,26 +21,32 @@
     "tile-left": {
       "description": "Tile window Left",
       "suggested_key": {
-        "default": "Ctrl+Shift+Left"
+        "default": "Alt+Shift+Left"
       }
     },
     "tile-right": {
       "description": "Tile window Right",
       "suggested_key": {
-        "default": "Ctrl+Shift+Right"
+        "default": "Alt+Shift+Right"
       }
     },
     "tile-up": {
       "description": "Tile window Up",
       "suggested_key": {
-        "default": "Ctrl+Shift+Up"
+        "default": "Alt+Shift+Up"
       }
     },
     "tile-down": {
       "description": "Tile window Down",
       "suggested_key": {
-        "default": "Ctrl+Shift+Down"
+        "default": "Alt+Shift+Down"
       }
+    },
+    "ws-next": {
+      "description": "Move to next workspace"
+    },
+    "ws-prev": {
+      "description": "Move to previous workspace"
     }
   },
   "permissions": [
