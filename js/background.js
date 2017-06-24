@@ -9,7 +9,7 @@ goog.require('goog.array');
 goog.require('goog.object');
 goog.require('goog.string');
 
-const DEBUG = true; // Logs Method calls.
+const DEBUG = false; // Logs Method calls.
 const DEBUG2 = true; // Logs data changes.
 
 /**
@@ -70,6 +70,7 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
  * @desc Switches to new workspace
  * @param {string} command
 */
+//TODO(): Provide visual feedback when changing workspaces
 chromewm.background.prototype.switchWorkspace = function(command) {
   var newWorkspace = this.currentWorkspace;
   if (command == "ws-next" && this.currentWorkspace != this.maxWorkspaces-1) {
@@ -79,26 +80,29 @@ chromewm.background.prototype.switchWorkspace = function(command) {
   }
 
   if (newWorkspace != this.currentWorkspace) {
-    var tempArray = [];
+
     this.getWorkspaceWindows().then( () => {
-
-      tempArray = goog.array.filter(this.windows, (e,i,a) => {
-        return e.workspace == this.currentWorkspace;
+      this.getThisWindowsByWorkspace(this.currentWorkspace).then((windows_) => {
+        DEBUG2 && console.log('Leaving Workspace:', this.currentWorkspace);
+        DEBUG2 && console.log('Hiding windows ', windows_);
+        goog.array.forEach(windows_, (window_,i,a) => {
+          chrome.windows.update(window_.id, {state: 'minimized'});
+        });
       });
 
-
-
-      DEBUG1 && console.log('Leaving Workspace:',this.currentWorkspace);
-      DEBUG2 && console.log('Hiding windows ', tempArray);
-
-
-
-      tempArray = goog.array.filter(this.windows, (e,i,a) => {
-        return e.workspace == newWorkspace;
+//TODO(): Maybe I need to open a new window, to keep listening for keyboard
+//TODO(): Should I track which one was in focus to ensure I open it the last?
+      this.getThisWindowsByWorkspace(newWorkspace).then((windows_) => {
+        DEBUG2 && console.log('Entering Workspace:', newWorkspace);
+        DEBUG2 && console.log('Showing windows ', windows_);
+        goog.array.forEach(windows_, (window_,i,a) => {
+          if (window_.state != "minimized") {
+            chrome.windows.update(window_.id, {focused: true});
+          }
+        });
       });
-      DEBUG1 && console.log('Entering Workspace:', newWorkspace);
-      DEBUG2 && console.log('Showing windows ', tempArray);
 
+    }).then( () => {
       this.currentWorkspace = newWorkspace;
     });
   }
@@ -111,13 +115,17 @@ chromewm.background.prototype.switchWorkspace = function(command) {
  * @param {number} workspace - The workspace number
  * @return {Promise}
 */
-chromewm.background.protype.getThisWindowsByWorkspace = function(workspace) {
-  return Promise((resolve, reject) => {
+chromewm.background.prototype.getThisWindowsByWorkspace = function(workspace) {
+  var tempArray = [];
+  return new Promise((resolve, reject) => {
     tempArray = goog.array.filter(this.windows, (e,i,a) => {
         return e.workspace == workspace;
       });
-    if (!tempArray) {resolve(tempArray);}
-    else { reject()}
+    if (tempArray.lenght != 0) {
+      resolve(tempArray);
+    } else {
+      reject();
+    }
   });
 }
 
