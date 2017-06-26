@@ -95,18 +95,31 @@ chromewm.background.prototype.switchWorkspace = function(command) {
       this.getThisWindowsByWorkspace(newWorkspace).then((windows_) => {
         DEBUG2 && console.log('Entering Workspace:', newWorkspace);
         DEBUG2 && console.log('Showing windows ', windows_);
-        goog.array.forEach(windows_, (window_,i,a) => {
-          if (window_.state != "minimized") {
-            chrome.windows.update(window_.id, {focused: true});
-          }
-        });
+        if (goog.array.isEmpty(windows_)) {
+          chrome.windows.create({state: 'maximized'});
+        } else {
+          goog.array.forEach(windows_, (window_,i,a) => {
+            if (window_.state != "minimized") {
+              chrome.windows.update(window_.id, {focused: true});
+            }
+          });
+        }
       });
 
     }).then( () => {
       this.currentWorkspace = newWorkspace;
+      chrome.notifications.create({
+          type: "basic",
+          title: "Workspace "+newWorkspace,
+          priority: 2
+        });
+      //     },
+      //     (notificationId_) => {
+      //       setTimeout(
+      //         () => {chrome.notifications.clear(notificationId_);}, 1000);
+      // });
     });
   }
-
 }
 
 

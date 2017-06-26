@@ -52,6 +52,7 @@
   "permissions": [
     "tabs",
     "storage",
-    "system.display"
+    "system.display",
+    "notifications"
   ]
 }

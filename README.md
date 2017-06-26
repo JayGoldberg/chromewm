@@ -1,4 +1,4 @@
-# chromews
+# Chrome Windows Manager
 
 Overview:
 Chrome extension to emulate workspaces and window tiling in ChromeOS.
