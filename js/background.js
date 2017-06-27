@@ -9,7 +9,7 @@ goog.require('goog.array');
 goog.require('goog.object');
 goog.require('goog.string');
 
-const DEBUG = false; // Logs Method calls.
+const DEBUG = true; // Logs Method calls.
 const DEBUG2 = true; // Logs data changes.
 
 /**
@@ -32,7 +32,7 @@ chromewm.background = function() {
 */
 chromewm.background.prototype.init = function() {
   /** Initializes properties */
-  this.currentWorkspace = 0;
+  this.currentWorkspace = 1;
   this.maxWorkspaces = 3;
 
   /** Initializes Listeners */
@@ -43,7 +43,7 @@ chromewm.background.prototype.init = function() {
 
 
 /**
- * @desc Populates this.workspaces with windows in currentWorkspace
+ * @desc Populates this.windows with windows in currentWorkspace
  * @return {Promise}
 */
 chromewm.background.prototype.getWorkspaceWindows = function() {
@@ -70,30 +70,30 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
  * @desc Switches to new workspace
  * @param {string} command
 */
-//TODO(): Provide visual feedback when changing workspaces
 chromewm.background.prototype.switchWorkspace = function(command) {
   var newWorkspace = this.currentWorkspace;
-  if (command == "ws-next" && this.currentWorkspace != this.maxWorkspaces-1) {
+  if (command == "ws-next" && this.currentWorkspace != this.maxWorkspaces) {
     newWorkspace = this.currentWorkspace + 1;
-  } else if (command == "ws-prev" && this.currentWorkspace != 0) {
+  } else if (command == "ws-prev" && this.currentWorkspace != 1) {
     newWorkspace = this.currentWorkspace - 1;
   }
 
   if (newWorkspace != this.currentWorkspace) {
 
+//TODO(): Close the window if empty when leaving workspace
+//TODO(): Track which one was in focus to ensure I open it the last
     this.getWorkspaceWindows().then( () => {
       this.getThisWindowsByWorkspace(this.currentWorkspace).then((windows_) => {
-        DEBUG2 && console.log('Leaving Workspace:', this.currentWorkspace);
+        DEBUG && console.log('Leaving Workspace:', this.currentWorkspace);
         DEBUG2 && console.log('Hiding windows ', windows_);
         goog.array.forEach(windows_, (window_,i,a) => {
           chrome.windows.update(window_.id, {state: 'minimized'});
         });
       });
 
-//TODO(): Maybe I need to open a new window, to keep listening for keyboard
-//TODO(): Should I track which one was in focus to ensure I open it the last?
+
       this.getThisWindowsByWorkspace(newWorkspace).then((windows_) => {
-        DEBUG2 && console.log('Entering Workspace:', newWorkspace);
+        DEBUG && console.log('Entering Workspace:', newWorkspace);
         DEBUG2 && console.log('Showing windows ', windows_);
         if (goog.array.isEmpty(windows_)) {
           chrome.windows.create({state: 'maximized'});
@@ -105,21 +105,32 @@ chromewm.background.prototype.switchWorkspace = function(command) {
           });
         }
       });
-
     }).then( () => {
       this.currentWorkspace = newWorkspace;
-      chrome.notifications.create({
-          type: "basic",
-          title: "Workspace "+newWorkspace,
-          priority: 2
-        });
-      //     },
-      //     (notificationId_) => {
-      //       setTimeout(
-      //         () => {chrome.notifications.clear(notificationId_);}, 1000);
-      // });
+      this.showTransition(newWorkspace);
     });
   }
+}
+
+
+//TODO(): Switch browser action icon
+/**
+ * @desc Provides visual feedback to user on workspace change
+ * @param {number} newWorkspace
+*/
+chromewm.background.prototype.showTransition = function(newWorkspace) {
+  chrome.notifications.create("workspaceChange", {
+      type: "basic",
+      title: "\rWorkspace " + newWorkspace,
+      message: "",
+      iconUrl: "icon-128.png",
+      priority: 2
+      },
+      (notificationId_) => {
+        setTimeout(() => {
+          chrome.notifications.clear(notificationId_);}, 500);
+  });
+
 }
 
 
