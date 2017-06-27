@@ -113,7 +113,6 @@ chromewm.background.prototype.switchWorkspace = function(command) {
 }
 
 
-//TODO(): Switch browser action icon
 /**
  * @desc Provides visual feedback to user on workspace change
  * @param {number} newWorkspace
@@ -131,6 +130,9 @@ chromewm.background.prototype.showTransition = function(newWorkspace) {
           chrome.notifications.clear(notificationId_);}, 500);
   });
 
+  chrome.browserAction.setIcon({
+    path: "browser-38-" + newWorkspace + ".png"
+  });
 }
 
 
