@@ -1,7 +1,8 @@
 /**
  * @fileoverview Background file
  * @author EduCampi
- */
+*/
+// TODO(): Implement Promises properly, resolve and reject
 
 goog.provide('chromewm.background');
 
@@ -39,6 +40,12 @@ chromewm.background.prototype.init = function() {
   chrome.commands.onCommand.addListener( (command) => {
       this.handleCommand(command);
     });
+
+    chrome.browserAction.onClicked.addListener( (tab) => {
+      chrome.tabs.create({url: "chrome://extensions/configureCommands"});
+    });
+
+
 }
 
 
@@ -46,16 +53,30 @@ chromewm.background.prototype.init = function() {
  * @desc Populates this.windows with windows in currentWorkspace
  * @return {Promise}
 */
+//TODO(): Check using goog.array.insert() to add windows
 chromewm.background.prototype.getWorkspaceWindows = function() {
+  var currentWorkspace = this.currentWorkspace;
   return new Promise((resolve, reject) => {
     chrome.windows.getAll((windows_) => {
-      goog.array.forEach((windows_), (window_,i,a) => {
+
+      // Removes closed windows from this.windows
+      goog.array.removeAllIf(this.windows, (window_,i,a) => {
+        if (!goog.array.find(windows_, (w,i,a) => {
+            return w.id == window_.id;})) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+
+      // Adds new windows_ to this.windows
+      goog.array.forEach(windows_, (window_,i,a) => {
         if (!goog.array.find(this.windows, (w,i,a) => {
             return w.id == window_.id;})) {
           this.windows.push({
             id: window_.id,
             state: window_.state,
-            workspace: this.currentWorkspace
+            workspace: currentWorkspace
           });
         }
       });
@@ -80,20 +101,21 @@ chromewm.background.prototype.switchWorkspace = function(command) {
 
   if (newWorkspace != this.currentWorkspace) {
 
-//TODO(): Close the window if empty when leaving workspace
+//TODO(): Close the window if empty when leaving workspace (needs Tabs permissions)
 //TODO(): Track which one was in focus to ensure I open it the last
     this.getWorkspaceWindows().then( () => {
+
+      // Hides currentWorkspace windows
       this.getThisWindowsByWorkspace(this.currentWorkspace).then((windows_) => {
-        DEBUG && console.log('Leaving Workspace:', this.currentWorkspace);
         DEBUG2 && console.log('Hiding windows ', windows_);
         goog.array.forEach(windows_, (window_,i,a) => {
+
           chrome.windows.update(window_.id, {state: 'minimized'});
         });
       });
 
-
+      // Shows newWorkspace windows
       this.getThisWindowsByWorkspace(newWorkspace).then((windows_) => {
-        DEBUG && console.log('Entering Workspace:', newWorkspace);
         DEBUG2 && console.log('Showing windows ', windows_);
         if (goog.array.isEmpty(windows_)) {
           chrome.windows.create({state: 'maximized'});

@@ -3,6 +3,7 @@
 
 # Javascript
 js/background.js
+js/options.js
 
 # HTMLs
 html/options.html
