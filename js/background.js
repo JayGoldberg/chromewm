@@ -2,7 +2,9 @@
  * @fileoverview Background file
  * @author EduCampi
 */
+
 // TODO(): Implement Promises properly, resolve and reject
+// TODO(): Cleanup and improve code quality
 
 goog.provide('chromewm.background');
 
@@ -27,10 +29,13 @@ chromewm.background = function() {
   this.currentWorkspace;
 }
 
-/** @type {Array} workspaces */
+
 /**
 * @desc Initializes the Main object
 */
+
+//TODO(): getOptions
+//TODO(): Restore saved this.windows ?
 chromewm.background.prototype.init = function() {
   /** Initializes properties */
   this.currentWorkspace = 1;
@@ -41,19 +46,14 @@ chromewm.background.prototype.init = function() {
       this.handleCommand(command);
     });
 
-    chrome.browserAction.onClicked.addListener( (tab) => {
-      chrome.tabs.create({url: "chrome://extensions/configureCommands"});
-    });
-
 
 }
 
 
-/**
+/** TODO(): Check using goog.array.insert() to add windows
  * @desc Populates this.windows with windows in currentWorkspace
  * @return {Promise}
 */
-//TODO(): Check using goog.array.insert() to add windows
 chromewm.background.prototype.getWorkspaceWindows = function() {
   var currentWorkspace = this.currentWorkspace;
   return new Promise((resolve, reject) => {
@@ -70,17 +70,31 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
       });
 
       // Adds new windows_ to this.windows
-      goog.array.forEach(windows_, (window_,i,a) => {
-        if (!goog.array.find(this.windows, (w,i,a) => {
-            return w.id == window_.id;})) {
+      goog.array.forEach(windows_, async (window_,i,a) => {
+        var foundWindow = await goog.array.find(this.windows, (w,i,a) => {
+          return w.id == window_.id;});
+        DEBUG2 && console.log('DATA: window_', window_);
+        DEBUG2 && console.log('DATA: foundWwindow', foundWindow);
+        if (foundWindow) {
+          await goog.array.removeIf(this.windows, (w, i, a ) => {
+            return (foundWindow.focused != w.focused) &&
+                (foundWindow.workspace == currentWorkspace);
+          });
+        }
+        if (!foundWindow) {
+            //if (!goog.array.find(this.windows, (w,i,a) => {
+            // return w.id == window_.id;})) {
+
           this.windows.push({
             id: window_.id,
             state: window_.state,
+            focused: window_.focused,
             workspace: currentWorkspace
           });
         }
       });
-      DEBUG2 && console.log("DATA: getWorkspaceWindows:", this.windows);
+      DEBUG2 && console.log("DATA: getWorkspaceWindows this.windows:",
+          this.windows);
       resolve();
     });
   });
@@ -91,6 +105,9 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
  * @desc Switches to new workspace
  * @param {string} command
 */
+
+//TODO(): Close the window if empty when leaving workspace (needs Tabs permissions)
+//TODO(): Track which one was in focus to ensure I open it the last
 chromewm.background.prototype.switchWorkspace = function(command) {
   var newWorkspace = this.currentWorkspace;
   if (command == "ws-next" && this.currentWorkspace != this.maxWorkspaces) {
@@ -100,9 +117,8 @@ chromewm.background.prototype.switchWorkspace = function(command) {
   }
 
   if (newWorkspace != this.currentWorkspace) {
+    var windowIdOnFocus = {};
 
-//TODO(): Close the window if empty when leaving workspace (needs Tabs permissions)
-//TODO(): Track which one was in focus to ensure I open it the last
     this.getWorkspaceWindows().then( () => {
 
       // Hides currentWorkspace windows
@@ -115,31 +131,36 @@ chromewm.background.prototype.switchWorkspace = function(command) {
       });
 
       // Shows newWorkspace windows
-      this.getThisWindowsByWorkspace(newWorkspace).then((windows_) => {
+      this.getThisWindowsByWorkspace(newWorkspace).then(async (windows_) => {
         DEBUG2 && console.log('Showing windows ', windows_);
         if (goog.array.isEmpty(windows_)) {
           chrome.windows.create({state: 'maximized'});
         } else {
-          goog.array.forEach(windows_, (window_,i,a) => {
+          await goog.array.forEach(windows_, (window_,i,a) => {
             if (window_.state != "minimized") {
               chrome.windows.update(window_.id, {focused: true});
+              if (window_.focused) {
+                windowIdOnFocus = window_.id;
+                DEBUG2 && console.log("DATA: windowIdOnFocus", windowIdOnFocus);
+              }
             }
           });
+          chrome.windows.update(windowIdOnFocus, {focused: true});
         }
       });
     }).then( () => {
       this.currentWorkspace = newWorkspace;
-      this.showTransition(newWorkspace);
+      this.showWsTransition(newWorkspace);
     });
   }
 }
 
 
-/**
+/** TODO(): Use workspace icon for notification?
  * @desc Provides visual feedback to user on workspace change
  * @param {number} newWorkspace
 */
-chromewm.background.prototype.showTransition = function(newWorkspace) {
+chromewm.background.prototype.showWsTransition = function(newWorkspace) {
   chrome.notifications.create("workspaceChange", {
       type: "basic",
       title: "\rWorkspace " + newWorkspace,
@@ -149,7 +170,7 @@ chromewm.background.prototype.showTransition = function(newWorkspace) {
       },
       (notificationId_) => {
         setTimeout(() => {
-          chrome.notifications.clear(notificationId_);}, 500);
+          chrome.notifications.clear(notificationId_);}, 700);
   });
 
   chrome.browserAction.setIcon({
@@ -178,7 +199,7 @@ chromewm.background.prototype.getThisWindowsByWorkspace = function(workspace) {
 }
 
 
-/** DONE
+/**
 * @desc Gets the display's work area where the window is.
 * @param {!number} windowId
 * @return {Promise}
