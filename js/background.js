@@ -153,7 +153,7 @@ chromewm.background.prototype.switchWorkspace = function(command) {
       this.getThisWindowsByWorkspace(newWorkspace).then((windows_) => {
         DEBUG2 && console.log('Showing windows ', windows_);
         if (goog.array.isEmpty(windows_)) {
-          chrome.windows.create({state: 'maximized'});
+          chrome.windows.create({url: "chrome://newtab/", state: 'maximized'});
         } else {
         // new Promise((resolve, reject) => {
           // resolve (goog.array.forEach(windows_, (window_,i,a) => {
