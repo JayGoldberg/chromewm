@@ -12,8 +12,9 @@ goog.require('goog.array');
 goog.require('goog.object');
 goog.require('goog.string');
 
-const DEBUG = true; // Logs Method calls.
+const DEBUG = false; // Logs Method calls.
 const DEBUG2 = true; // Logs data changes.
+const DEBUG3 = false; // Logs window tiling
 
 /**
  * @desc Defines main object
@@ -56,30 +57,39 @@ chromewm.background.prototype.init = function() {
 */
 chromewm.background.prototype.getWorkspaceWindows = function() {
   var currentWorkspace = this.currentWorkspace;
-  DEBUG2 && console.log("DATA: before getWorkspaceWindows this.windows:",
+  DEBUG1 && console.log("INFO: IN getWorkspaceWindows (this.windows):",
       this.windows);
   return new Promise((resolve, reject) => {
     chrome.windows.getAll((windows_) => {
+      DEBUG2 && console.log('DATA: getWorkspaceWindows currentWindows:', windows_);
 
-      // Removes windows from this.windows
-      goog.array.removeAllIf(this.windows, (window_,i,a) => {
-        var foundWindow = goog.array.find(windows_, (w,i,a) => {
-            return w.id == window_.id;});
-        // DEBUG2 && console.log('DATA: window_', window_);
-        // DEBUG2 && console.log('DATA: foundWwindow', foundWindow);
-        if ((foundWindow == null) ||
-            ((foundWindow.focused != window_.focused) &&
-            (foundWindow.workspace == currentWorkspace))) {
-          return true;
-        } else {
-          return false;
-        }
+      // Removes closed windows from this.windows
+      goog.array.removeAllIf(this.windows, (thisWindow_,i,a) => {
+        return !goog.array.find(windows_, (w,i,a) => {
+            return w.id == thisWindow_.id;});
+        //
+        // if (foundWindow == null) {
+        //   return true;
+        // } else {
+        //   return false;
+        // }
       });
 
       // Adds new windows_ to this.windows
+      // TODO(): Replace by goog.array.map ?
       goog.array.forEach(windows_, (window_,i,a) => {
-        if (!goog.array.find(this.windows, (w,i,a) => {
-            return w.id == window_.id;})) {
+        var foundWindow = null;
+        var foundWindowIndx = goog.array.findIndex(this.windows, (thisWindow_,i,a) => {
+             return thisWindow_.id == window_.id;});
+
+        if (foundWindowIndx != -1) { foundWindow = this.windows[foundWindowIndx];}
+
+        if (foundWindow != null && foundWindow.focused != window_.focused
+            && foundWindow.workspace == currentWorkspace) {
+          this.windows[foundWindowIndx].focused = window_.focused;
+        }
+
+        if(foundWindow == null) {
           this.windows.push({
             id: window_.id,
             state: window_.state,
@@ -88,7 +98,8 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
           });
         }
       });
-      DEBUG2 && console.log("DATA: after getWorkspaceWindows this.windows:",
+
+      DEBUG1 && console.log("INFO: OUT getWorkspaceWindows (this.windows):",
           this.windows);
       resolve();
     });
@@ -104,10 +115,9 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
 chromewm.background.prototype.getThisWindowsByWorkspace = function(workspace) {
   // var tempArray = [];
   return new Promise((resolve, reject) => {
-    // tempArray = goog.array.filter(this.windows, (window_,i,a) => {
-        resolve(goog.array.filter(this.windows, (window_,i,a) => {
+    resolve(goog.array.filter(this.windows, (window_,i,a) => {
         return window_.workspace == workspace;
-      }));
+        }));
     // if (tempArray.length != 0) {
       // resolve(tempArray);
     // } else {
@@ -117,7 +127,7 @@ chromewm.background.prototype.getThisWindowsByWorkspace = function(workspace) {
 }
 
 
-/** TODO(): Track which one was in focus to ensure I open it the last
+/**
  * @desc Switches to new workspace
  * @param {string} command
 */
@@ -155,25 +165,19 @@ chromewm.background.prototype.switchWorkspace = function(command) {
         if (goog.array.isEmpty(windows_)) {
           chrome.windows.create({url: "chrome://newtab/", state: 'maximized'});
         } else {
-        // new Promise((resolve, reject) => {
-          // resolve (goog.array.forEach(windows_, (window_,i,a) => {
           goog.array.forEach(windows_, (window_,i,a) => {
             if (window_.state != "minimized") {
               chrome.windows.update(window_.id, {focused: true});
               if (window_.focused) {
                 windowIdOnFocus = window_.id;
-                DEBUG2 && console.log("DATA: windowIdOnFocus", windowIdOnFocus);
               }
             }
           });
-        }
-      }).then( () => {
-          if (windowIdOnFocus) {
+          if (windowIdOnFocus) {  // Maybe there's no need to check (always one focused)
             chrome.windows.update(windowIdOnFocus, {focused: true});
           }
-        });
-
-
+        }
+      });
     }).then( () => {
       this.currentWorkspace = newWorkspace;
       this.showWsTransition(newWorkspace);
@@ -235,7 +239,7 @@ chromewm.background.prototype.getDisplayWorkArea = function (windowId) {
  * @param {string} movement
  */
 chromewm.background.prototype.tileWindow = function(movement) {
-  DEBUG && console.log('INFO: background.tileWindow(',movement,')');
+  DEBUG3 && console.log('INFO: background.tileWindow(',movement,')');
   var newSize = {};
   chrome.windows.getLastFocused((window_) => {
     this.getDisplayWorkArea(window_.id).then((workArea) => {
@@ -290,7 +294,7 @@ chromewm.background.prototype.tileWindow = function(movement) {
           return;
       };
 
-      DEBUG2 && console.log('DATA: background.tileWindow: ',
+      DEBUG3 && console.log('DATA: background.tileWindow: ',
           'window_:',window_,
           'workArea:', workArea,
           'workAreaCenter:', workAreaCenter,
