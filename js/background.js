@@ -12,8 +12,8 @@ goog.require('goog.array');
 goog.require('goog.object');
 goog.require('goog.string');
 
-const DEBUG = false; // Logs Method calls.
-const DEBUG2 = true; // Logs data changes.
+const DEBUG1 = false; // Logs Method calls.
+const DEBUG2 = false; // Logs data changes.
 const DEBUG3 = false; // Logs window tiling
 
 /**
@@ -195,16 +195,16 @@ chromewm.background.prototype.showWsTransition = function(newWorkspace) {
       type: "basic",
       title: "\rWorkspace " + newWorkspace,
       message: "",
-      iconUrl: "icon-128.png",
+      iconUrl: "icon-64-" + newWorkspace + ".png",
       priority: 2
       },
       (notificationId_) => {
         setTimeout(() => {
-          chrome.notifications.clear(notificationId_);}, 700);
+          chrome.notifications.clear(notificationId_);}, 2000);
   });
 
   chrome.browserAction.setIcon({
-    path: "browser-38-" + newWorkspace + ".png"
+    path: "icon-38-" + newWorkspace + ".png"
   });
 }
 
@@ -315,7 +315,7 @@ chromewm.background.prototype.tileWindow = function(movement) {
 * @param {string} command
 */
 chromewm.background.prototype.handleCommand = function(command) {
-  DEBUG && console.log('INFO: background.handleCommand(',command,')');
+  DEBUG1 && console.log('INFO: background.handleCommand(',command,')');
   if (goog.string.startsWith(command, 'tile-')) {
     this.tileWindow(command);
     return;

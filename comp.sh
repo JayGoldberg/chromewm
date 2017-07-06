@@ -1,20 +1,34 @@
 #!/bin/bash
 # With jar compiler
 
+# No compila bien, problemas para cerrar windows en viejos workspaces
+
+############################################################
+# Replace the following with the paths in your environment #
+############################################################
+ENTRY="chromewm.background"
+OUTPUT="bin/background.js"
+EXTERNS="../thirdparty/closure-compiler/contrib/externs/chrome_extensions.js"
+CLOSURE_LIBRARY_PATH="../thirdparty/closure-library"
 COMPILER="java -jar ../thirdparty/bin/closure-compiler.jar"
+
+
+###################################
+#  Do not modify bellow this line #
+###################################
 BASICS="\
 --compilation_level ADVANCED \
---js_output_file bin/background3.js \
+--dependency_mode STRICT \
+--js_output_file $OUTPUT \
 "
 
 EXTRAS="\
---externs closure-library/closure/goog/**.js \
---js !closure-library/closure/goog/**test.js \
---js background3.js \
+--externs $EXTERNS \
+--js \"$CLOSURE_LIBRARY_PATH/closure/goog/**.js\" \
+--js \"\!$CLOSURE_LIBRARY_PATH/closure/goog/**test.js\" \
+--js \"./**.js\" \
 "
-#--dependency_mode=STRICT --entry_point=chromesnap.background \
-BUILD_COMMAND="$COMPILER $BASICS $EXTRAS"
+
+BUILD_COMMAND="$COMPILER $BASICS $EXTRAS --entry_point $ENTRY"
 echo $BUILD_COMMAND
 eval $BUILD_COMMAND
-# --js ../thirdparty/closure-library/closure/goog/base.js \
-# --js ../thirdparty/closure-library/closure/goog/string/string.js \
