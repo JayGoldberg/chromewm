@@ -12,7 +12,8 @@
     "default_title": "Chrome Windows Manager",
     "default_icon": {
       "38": "icon-38.png"
-    }
+    },
+    "default_popup": "options.html"
   },
   "options_ui": {
     "page": "options.html",
@@ -47,10 +48,10 @@
       }
     },
     "ws-next": {
-      "description": "Move to next workspace"
+      "description": "Next workspace (i.e. Ctrl+Shift+Down)"
     },
     "ws-prev": {
-      "description": "Move to previous workspace"
+      "description": "Previous workspace (i.e. Ctrl+Shift+Up)"
     }
   },
   "permissions": [

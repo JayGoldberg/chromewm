@@ -22,6 +22,8 @@ BASICS="\
 --js_output_file $OUTPUT \
 "
 
+
+# probar para externs --externs_url https://raw.githubusercontent.com/google/closure-compiler/master/contrib/externs/chrome_extensions.js
 EXTRAS="\
 --externs $EXTERNS \
 --js \"$CLOSURE_LIBRARY_PATH/closure/goog/**.js\" \

@@ -5,6 +5,7 @@
 
 // TODO(): Implement Promises properly, resolve and reject
 // TODO(): Cleanup and improve code quality
+// TODO(): See if I can listen for shortcuts without a window open
 
 goog.provide('chromewm.background');
 
@@ -186,7 +187,7 @@ chromewm.background.prototype.switchWorkspace = function(command) {
 }
 
 
-/** TODO(): Use workspace icon for notification?
+/**
  * @desc Provides visual feedback to user on workspace change
  * @param {number} newWorkspace
 */
