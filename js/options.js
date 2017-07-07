@@ -21,17 +21,22 @@ goog.require('goog.events');
  * @constructor @export
  */
 chromewm.options = function() {
+  /** @private {Element} workspaceQty_ */
+  this.workspaceQty_ = goog.dom.getElement('workspaceQty');
 }
 
-chromewm.options.prototype.Init = function() {
-  this.workspaceQty = goog.dom.getElement('workspaceQty');
 
-  this.Load();
+/**
+ * @desc Initializes properties and listeners
+ */
+chromewm.options.prototype.Init = function() {
+
+  this.Load_();
 
   goog.events.listen(
-    this.workspaceQty,
+    this.workspaceQty_,
     goog.events.EventType.CHANGE,
-    () => { this.Save()}
+    () => { this.Save_()}
   );
 
   goog.events.listen(
@@ -39,40 +44,31 @@ chromewm.options.prototype.Init = function() {
       goog.events.EventType.CLICK,
       () => {
         chrome.tabs.create({url: "chrome://extensions/configureCommands"});}
-        // chrome.windows.create({
-          // url: "chrome://extensions/configureCommands",
-        // })
   );
 }
 
 
 /**
  * @desc Saves options
-*/
-chromewm.options.prototype.Save = function() {
-  var savedOptions = {
-    'workspaceQty': this.workspaceQty.value
-  };
-
-  chrome.storage.sync.set(savedOptions);
+ * @private
+ */
+chromewm.options.prototype.Save_ = function() {
+  localStorage.setItem('workspaceQty_', this.workspaceQty_.value);
 }
+
 
 /**
  * @desc Loads options
-*/
-chromewm.options.prototype.Load = function() {
-  chrome.storage.sync.get({
-    'workspaceQty': 1
-  },
-  (savedOptions) => {
-    this.workspaceQty.value = savedOptions.workspaceQty;
-  });
+ * @private
+ */
+chromewm.options.prototype.Load_ = function() {
+  this.workspaceQty_.value = localStorage.getItem('workspaceQty_') || 1;
 }
 
 
 /**
  * Waits for the page to load and instantiates the object
-*/
+ */
 /** @type {Object} optionsPage */
 var optionsPage = {};
 

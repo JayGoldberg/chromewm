@@ -5,17 +5,17 @@
 
 // TODO(): Implement Promises properly, resolve and reject
 // TODO(): Cleanup and improve code quality
-// TODO(): See if I can listen for shortcuts without a window open
 
 goog.provide('chromewm.background');
 
 goog.require('goog.array');
+goog.require('goog.events');
 goog.require('goog.object');
 goog.require('goog.string');
 
-const DEBUG1 = false; // Logs Method calls.
-const DEBUG2 = false; // Logs data changes.
-const DEBUG3 = false; // Logs window tiling
+var DEBUG1 = false; // Logs Method calls.
+var DEBUG2 = false; // Logs data changes.
+var DEBUG3 = false; // Logs window tiling
 
 /**
  * @desc Defines main object
@@ -35,15 +35,38 @@ chromewm.background = function() {
 /**
 * @desc Initializes the Main object
 */
-
-//TODO(): getOptions
 //TODO(): Restore saved this.windows ?
 chromewm.background.prototype.init = function() {
   /** Initializes properties */
   this.currentWorkspace = 1;
-  this.maxWorkspaces = 3;
+
+  this.maxWorkspaces = localStorage.getItem('workspaceQty_') || 1;
+
+// it works, but get's it as minimized. Need to save state as well?
+  chrome.windows.getAll((windows_) => {
+    goog.array.forEach(windows_, (window_,i,a) => {
+      this.windows.push({
+        id: window_.id,
+        state: window_.state,
+        focused: window_.focused,
+        workspace: localStorage.getItem(window_.id.toString()) || 1
+      });
+    });
+    console.log('INIT this.windows', this.windows);
+    console.log('INIT windows_', windows_);
+  });
+
+
 
   /** Initializes Listeners */
+  window.addEventListener(
+      'storage',
+      (e) => {
+        console.log('Storage Changed:', e);
+        this.maxWorkspaces = e.newValue;
+      }
+  );
+
   chrome.commands.onCommand.addListener( (command) => {
       this.handleCommand(command);
     });
@@ -66,14 +89,14 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
 
       // Removes closed windows from this.windows
       goog.array.removeAllIf(this.windows, (thisWindow_,i,a) => {
-        return !goog.array.find(windows_, (w,i,a) => {
+        var foundWindow = goog.array.find(windows_, (w,i,a) => {
             return w.id == thisWindow_.id;});
-        //
-        // if (foundWindow == null) {
-        //   return true;
-        // } else {
-        //   return false;
-        // }
+
+        if (!foundWindow) {
+          localStorage.removeItem(thisWindow_.id.toString());
+          return true;
+        }
+        return false;
       });
 
       // Adds new windows_ to this.windows
@@ -85,18 +108,19 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
 
         if (foundWindowIndx != -1) { foundWindow = this.windows[foundWindowIndx];}
 
-        if (foundWindow != null && foundWindow.focused != window_.focused
+        if (foundWindow  && foundWindow.focused != window_.focused
             && foundWindow.workspace == currentWorkspace) {
           this.windows[foundWindowIndx].focused = window_.focused;
         }
 
-        if(foundWindow == null) {
+        if(!foundWindow) {
           this.windows.push({
             id: window_.id,
             state: window_.state,
             focused: window_.focused,
             workspace: currentWorkspace
           });
+          localStorage.setItem(window_.id.toString(), currentWorkspace);
         }
       });
 
