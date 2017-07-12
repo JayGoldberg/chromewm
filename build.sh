@@ -6,10 +6,10 @@
 ############################################################
 # Replace the following with the paths in your environment #
 ############################################################
-JS_CLOSURE_COMPILER_PATH=../thirdparty/bin/closure-compiler.jar
-CLOSURE_BUILDER_PATH=../thirdparty/closure-library/closure/bin/build/closurebuilder.py
-CLOSURE_LIBRARY_PATH=../thirdparty/closure-library/
-JS_CHROME_EXTENSIONS_API=../thirdparty/closure-compiler/contrib/externs/chrome_extensions.js
+JS_CLOSURE_COMPILER_PATH=../third_party/bin/closure-compiler.jar
+CLOSURE_BUILDER_PATH=../third_party/closure-library/closure/bin/build/closurebuilder.py
+CLOSURE_LIBRARY_PATH=../third_party/closure-library/
+JS_CHROME_EXTENSIONS_API=../third_party/closure-compiler/contrib/externs/chrome_extensions.js
 COMPILED_PATH=bin
 
 ###################################

@@ -8,9 +8,9 @@
 ############################################################
 ENTRY="chromewm.background"
 OUTPUT="bin/background.js"
-EXTERNS="../thirdparty/closure-compiler/contrib/externs/chrome_extensions.js"
-CLOSURE_LIBRARY_PATH="../thirdparty/closure-library"
-COMPILER="java -jar ../thirdparty/bin/closure-compiler.jar"
+EXTERNS="../third_party/closure-compiler/contrib/externs/chrome_extensions.js"
+CLOSURE_LIBRARY_PATH="../third_party/closure-library"
+COMPILER="java -jar ../third_party/bin/closure-compiler.jar"
 
 
 ###################################
