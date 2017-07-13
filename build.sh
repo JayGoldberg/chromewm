@@ -42,6 +42,7 @@ JS_COMPILER_PARAMETERS="\
 --jscomp_off=missingProperties \
 --externs=$JS_CHROME_EXTENSIONS_API \
 --hide_warnings_for=goog"
+
 #--jscomp_off=unknownDefines \
 #--jscomp_off=undefinedVars \
 #--jscomp_off=undefinedNames \

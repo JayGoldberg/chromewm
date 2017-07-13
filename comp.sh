@@ -9,6 +9,7 @@
 ENTRY="chromewm.background"
 OUTPUT="bin/background.js"
 EXTERNS="../third_party/closure-compiler/contrib/externs/chrome_extensions.js"
+#EXTERNS=\"https://raw.githubusercontent.com/google/closure-compiler/master/contrib/externs/chrome_extensions.js\"
 CLOSURE_LIBRARY_PATH="../third_party/closure-library"
 COMPILER="java -jar ../third_party/bin/closure-compiler.jar"
 
@@ -22,8 +23,7 @@ BASICS="\
 --js_output_file $OUTPUT \
 "
 
-
-# probar para externs --externs_url https://raw.githubusercontent.com/google/closure-compiler/master/contrib/externs/chrome_extensions.js
+#--externs_url $EXTERNS \  #This option is documented online, but not in the jar
 EXTRAS="\
 --externs $EXTERNS \
 --js \"$CLOSURE_LIBRARY_PATH/closure/goog/**.js\" \
