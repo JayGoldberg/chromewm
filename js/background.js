@@ -5,7 +5,9 @@
 
 // TODO(): Implement Promises properly, resolve and reject
 // TODO(): Cleanup and improve code quality
-// TODO(): Move windows to other workspaces
+// TODO(): Move windows to other workspaces (alt+tab?)
+// TODO(): Update this.windows__ if tabs hash changes, not only when leaving ws
+// TODO(): Improve/fix Initialization after crash
 
 goog.provide('chromewm.background');
 
@@ -17,60 +19,47 @@ goog.require('goog.string');
 
 
 var DEBUG_CALLS = false; // Logs Method calls.
-var DEBUG_VARS = false; // Logs data changes.
-var DEBUG_TILING = false; // Logs window tiling
-var DEBUG_DEV = true; // Extra flag to use during dev efforts
+var DEBUG_WS = false; // Debugs Workspaces
 
+
+////////////////////////////////////////////
+//          Initialization Logic          //
+////////////////////////////////////////////
 
 /**
  * @desc Defines main object
  * @constructor @export
  */
 chromewm.background = function() {
-  /** @type {Array} windows */
-  this.windows = [];
-  /** @type {number} maxWorkspaces */
-  this.maxWorkspaces;
-  /** @type {number} currentWorkspace */
-  this.currentWorkspace;
+  /** @private {Array} windows_ */
+  this.windows_ = [];
+  /** @private {number} maxWorkspaces_ */
+  this.maxWorkspaces_;
+  /** @private {number} currentWorkspace_ */
+  this.currentWorkspace_;
   /** @private {Object} storage_ */
   this.storage_;
 }
 
-
-chromewm.background.prototype.waitForWindows = function() {
-  return new Promise(resolve => {
-  var timer = setInterval( () => {
-      chrome.windows.getAll((windows_) => {
-        var largo = windows_.length;
-        if (largo > 1) {
-          clearInterval(timer);
-          resolve(largo);
-        }
-      });
-    }, 500);
-  });
-}
-
-
 /**
 * @desc Initializes the Main object
 */
-//TODO(): Restore saved this.windows ?
+//TODO(): Restore saved this.windows_ ?
 chromewm.background.prototype.Init = async function() {
   /** Initializes properties */
-  this.currentWorkspace = 1;
+  this.currentWorkspace_ = 1;
 
   this.storage_ = new goog.storage.mechanism.HTML5LocalStorage();
 
-  this.maxWorkspaces = parseInt(this.storage_.get('workspaceQty_'),10) || 1;
-
+  this.maxWorkspaces_ = parseInt(this.storage_.get('workspaceQty_'),10) || 1;
+  // this.storage_.clear();
+  // this.maxWorkspaces_ = 3;
   // Waits for Windows to reload after a Chrome crash.
-  var waitW = await this.waitForWindows();
-  DEBUG_DEV && console.log('INIT: Found Windows', waitW);
+  var waitW = await this.waitForWindows_();
+  console.log('INIT: Found Windows', waitW);
 
   // Recovers saved Windows and Workspaces and shows workspace 1
-  this.getWindowsFromStorage().then(savedWindows_ => {
+  this.getWindowsFromStorage_().then(savedWindows_ => {
     chrome.windows.getAll({'populate': true}, (windows_) => {
       goog.array.forEach(windows_, (window_,i,a) => {
         goog.array.forEach(savedWindows_, (sW_, sI, sA) => {
@@ -78,10 +67,10 @@ chromewm.background.prototype.Init = async function() {
           if (sW_.tabs == goog.string.hashCode(window_.tabs.length.toString() +
               goog.array.last(window_.tabs).url)) {
 
-            this.windows.push({
+            this.windows_.push({
               id: window_.id,
               state: sW_.state,
-              focused: window_.focused,
+              focused: sW_.focused,
               tabs: sW_.tabs,
               workspace: sW_.workspace
             });
@@ -95,10 +84,12 @@ chromewm.background.prototype.Init = async function() {
           }
         });
       });
-      console.log('INIT this.windows', this.windows);
+      console.log('INIT this.windows_', this.windows_);
       console.log('INIT windows_', windows_);
     });
-  });
+  }).catch( () => {
+    console.log('INIT: Unable to load saved windows_');}
+  );
 
 
   //TODO(): replace by goog.events
@@ -107,23 +98,40 @@ chromewm.background.prototype.Init = async function() {
       'storage',
       (e) => {
         console.log('Storage Changed:', e);
-        this.maxWorkspaces = e.newValue;
+        this.maxWorkspaces_ = e.newValue;
       }
   );
 
   chrome.commands.onCommand.addListener( (command) => {
-      this.handleCommand(command);
+      this.commandListener_(command);
     });
 
 
 }
 
+/**
+ */
+chromewm.background.prototype.waitForWindows_ = function() {
+  return new Promise(resolve => {
+    var timer = setInterval( () => {
+      chrome.windows.getAll((windows_) => {
+        var largo = windows_.length;
+        if (largo > 1) {
+          clearInterval(timer);
+          resolve(largo);
+        }
+      });
+    }, 500);
+  });
+}
+
 
 /**
- * @desc Gets Windows from localStorage
+ * @desc Gets Windows from this.storage_
+ * @private
  * @return {Promise}
  */
-chromewm.background.prototype.getWindowsFromStorage = function() {
+chromewm.background.prototype.getWindowsFromStorage_ = function() {
   return new Promise((resolve, reject) => {
     var storageIterator = this.storage_.__iterator__(true);
     var windows_ = [];
@@ -139,7 +147,7 @@ chromewm.background.prototype.getWindowsFromStorage = function() {
             focused: this.storage_.get(windowId + '-focused'),
             state: this.storage_.get(windowId + '-state'),
             tabs: this.storage_.get(windowId + '-tabs'),
-            workspace: this.storage_.get(windowId + '-ws')
+            workspace: this.storage_.get(windowId + '-workspace')
           });
         }
       }
@@ -156,20 +164,27 @@ chromewm.background.prototype.getWindowsFromStorage = function() {
 }
 
 
+
+
+////////////////////////////////////////////
+//            Workspaces Logic            //
+////////////////////////////////////////////
+
 /** TODO(): Check using goog.array.insert() to add windows
- * @desc Populates this.windows with windows in currentWorkspace
+ * @desc Populates this.windows_ with windows in currentWorkspace
+ * @private
  * @return {Promise}
  */
-chromewm.background.prototype.getWorkspaceWindows = function() {
-  var currentWorkspace = this.currentWorkspace;
-  DEBUG_CALLS && console.log("INFO: IN getWorkspaceWindows (this.windows):",
-      this.windows);
+chromewm.background.prototype.getWorkspaceWindows_ = function() {
+  DEBUG_CALLS && console.log('getWorkspaceWindows_()');
+
+  var newWindowHash = goog.string.hashCode('1' + 'chrome://newtab/');
+
   return new Promise((resolve, reject) => {
     chrome.windows.getAll({'populate': true}, (windows_) => {
-      DEBUG_VARS && console.log('DATA: getWorkspaceWindows currentWindows:', windows_);
 
-      // Removes closed windows from this.windows
-      goog.array.removeAllIf(this.windows, (thisWindow_,i,a) => {
+      // Removes closed windows from this.windows_
+      goog.array.removeAllIf(this.windows_, (thisWindow_,i,a) => {
         var foundWindow = goog.array.find(windows_, (w,i,a) => {
             return w.id == thisWindow_.id;});
 
@@ -180,46 +195,37 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
         return false;
       });
 
-      // Adds new windows_ to this.windows
-      // TODO(): Replace by goog.array.map ?
-      // TODO(): Update this.windows_ if tabs lenght and last url changed
+      // Adds new windows_ to this.windows_
       goog.array.forEach(windows_, (window_,i,a) => {
-        var foundWindow = null;
-        var foundWindowIndx = goog.array.findIndex(this.windows, (thisWindow_,i,a) => {
-             return thisWindow_.id == window_.id;});
+        var windowHash_ = goog.string.hashCode(
+            window_.tabs.length.toString() +
+            goog.array.last(window_.tabs).url);
 
-        if (foundWindowIndx != -1) { foundWindow = this.windows[foundWindowIndx];}
+        if (windowHash_ == newWindowHash) {
+          chrome.windows.remove(window_.id);
+        } else {
+          var foundWindow = goog.array.find(this.windows_, (thisWindow_,i,a) => {
+              return thisWindow_.id == window_.id;});
 
-        if (foundWindow && foundWindow.focused != window_.focused
-            && foundWindow.workspace == currentWorkspace) {
-          this.windows[foundWindowIndx].focused = window_.focused;
-        }
-
-        if(!foundWindow) {
-          this.windows.push({
-            focused: window_.focused,
-            id: window_.id,
-            state: window_.state,
-            tabs: goog.string.hashCode(
-                window_.tabs.length.toString() +
-                goog.array.last(window_.tabs).url),
-            workspace: currentWorkspace
-          });
-
-          //TODO(): Deber'ia guardar solo cuando me voy del workspace?
-          this.saveLocally_({
-            [window_.id.toString() + '-focused']: window_.focused,
-            [window_.id.toString() + '-state']: window_.state,
-            [window_.id.toString() + '-tabs']: goog.string.hashCode(
-                window_.tabs.length.toString() +
-                goog.array.last(window_.tabs).url),
-            [window_.id.toString() + '-ws']: currentWorkspace
-          });
+          if (!foundWindow
+              || (foundWindow.workspace == this.currentWorkspace_
+                && (foundWindow.focused != window_.focused
+                || foundWindow.state != window_.state
+                || foundWindow.tabs != windowHash_))) {
+            var windowToSave = {
+                focused: window_.focused,
+                id: window_.id,
+                state: window_.state,
+                tabs: goog.string.hashCode(
+                    window_.tabs.length.toString() +
+                    goog.array.last(window_.tabs).url),
+                workspace: this.currentWorkspace_        // If I use concurrency, maybe I need to store this in local variable
+            };
+            this.windows_.push(windowToSave);
+            this.saveWindowToStorage_(windowToSave);
+          }
         }
       });
-
-      DEBUG_CALLS && console.log("INFO: OUT getWorkspaceWindows (this.windows):",
-          this.windows);
       resolve();
     });
   });
@@ -227,74 +233,11 @@ chromewm.background.prototype.getWorkspaceWindows = function() {
 
 
 /**
- * @desc Shows the specified workspace
- * @private
- * @param {!number} newWorkspace
- */
-chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
-  if (!(newWorkspace >= 1 && newWorkspace <= this.maxWorkspaces)) {
-    return;
-  }
-  var newWindowHash = goog.string.hashCode('1' + 'chrome://newtab/');
-  var windowIdInFocus;
-
-  this.getWorkspaceWindows().then( () => {
-
-    goog.array.forEach(this.windows, (window_,i,a) => {
-      if (window_.workspace == this.currentWorkspace) {
-        console.log('HIDING:',window_);
-        if (window_.tabs == newWindowHash) {
-          chrome.windows.remove(window_.id);
-          goog.array.remove(this.windows, window_);
-          this.removeWindowFromStorage_(window_.id);
-        } else {
-          chrome.windows.update(window_.id, {state: 'minimized'});
-        }
-
-      } else if (window_.workspace == newWorkspace) {
-        console.log('SHOWING:',window_);
-        chrome.windows.update(window_.id, {focused: true});
-        if (window_.focused) {
-          windowIdInFocus = window_.id;
-        }
-      }
-    });
-    console.log('windowIdInFocus', windowIdInFocus);
-    if (typeof windowIdInFocus === 'undefined') {
-      chrome.windows.create({url: "chrome://newtab/", state: 'maximized'});
-    } else {
-      chrome.windows.update(windowIdInFocus, {focused: true});
-    }
-    console.log('UPDATING this.workspace');
-    this.currentWorkspace = newWorkspace;
-    this.showWsTransition(newWorkspace);
-  });
-}
-
-
-/**
- * @desc Switches to new workspace
- * @param {string} command
- */
-chromewm.background.prototype.switchWorkspace = function(command) {
-  var newWorkspace = this.currentWorkspace;
-  if (command == "ws-next" && this.currentWorkspace != this.maxWorkspaces) {
-    newWorkspace = this.currentWorkspace + 1;
-  } else if (command == "ws-prev" && this.currentWorkspace != 1) {
-    newWorkspace = this.currentWorkspace - 1;
-  }
-
-  if (newWorkspace != this.currentWorkspace) {
-    this.showWorkspace_(newWorkspace);
-  }
-}
-
-
-/**
  * @desc Provides visual feedback to user on workspace change
+ * @private
  * @param {number} newWorkspace
  */
-chromewm.background.prototype.showWsTransition = function(newWorkspace) {
+chromewm.background.prototype.showWsTransition_ = function(newWorkspace) {
   chrome.notifications.create("workspaceChange", {
       type: "basic",
       title: "\rWorkspace " + newWorkspace,
@@ -313,12 +256,74 @@ chromewm.background.prototype.showWsTransition = function(newWorkspace) {
 }
 
 
+
+
+/** DONE
+ * @desc Switches to new workspace
+ * @private
+ * @param {string} command
+ */
+chromewm.background.prototype.changeWorkspace_ = function(command) {
+  DEBUG_CALLS && console.log('changeWorkspace_(',command,')');
+
+  if (command == "ws-next" && this.currentWorkspace_ < this.maxWorkspaces_) {
+    this.showWorkspace_(this.currentWorkspace_ + 1);
+  } else if (command == "ws-prev" && this.currentWorkspace_ > 1) {
+    this.showWorkspace_(this.currentWorkspace_ - 1);
+  }
+}
+
+
+/** DONE
+ * @desc Shows the specified workspace
+ * @private
+ * @param {!number} newWorkspace
+ */
+chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
+  DEBUG_CALLS && console.log('CALL: showWorkspace_(',newWorkspace,');');
+
+  if (!(newWorkspace >= 1 && newWorkspace <= this.maxWorkspaces_)) {
+    return;
+  }
+  var windowIdInFocus;
+
+  this.getWorkspaceWindows_().then( () => {
+    goog.array.forEach(this.windows_, (window_,i,a) => {
+      if (window_.workspace == this.currentWorkspace_) {
+        DEBUG_WS && console.log('HIDING:', window_);
+        chrome.windows.update(window_.id, {state: 'minimized'});
+      } else if (window_.workspace == newWorkspace) {
+        DEBUG_WS && console.log('SHOWING:', window_);
+        chrome.windows.update(window_.id, {focused: true});
+        if (window_.focused) {
+          windowIdInFocus = window_.id;
+        }
+      }
+    });
+    if (typeof windowIdInFocus === 'undefined') {
+      chrome.windows.create({url: "chrome://newtab/", state: 'maximized'});
+    } else {
+      chrome.windows.update(windowIdInFocus, {focused: true});
+    }
+    this.currentWorkspace_ = newWorkspace;
+    this.showWsTransition_(newWorkspace);
+  });
+}
+
+
+
+
+////////////////////////////////////////////
+//          Tiling Windows Logic          //
+////////////////////////////////////////////
+
 /**
  * @desc Gets the display's work area where the window is.
+ * @private
  * @param {!number} windowId
  * @return {Promise}
  */
-chromewm.background.prototype.getDisplayWorkArea = function(windowId) {
+chromewm.background.prototype.getDisplayWorkArea_ = function(windowId) {
   var displayInFocus = {};
   return new Promise((resolve, reject) => {
     chrome.system.display.getInfo( (displays) => {
@@ -330,7 +335,7 @@ chromewm.background.prototype.getDisplayWorkArea = function(windowId) {
         if (goog.object.containsKey(displayInFocus, 'workArea')) {
           resolve(displayInFocus.workArea)
         } else {
-          reject(Error("Failed to getDisplayWorkArea"));
+          reject(Error("Failed to getDisplayWorkArea_"));
         }
       });
     });
@@ -340,13 +345,15 @@ chromewm.background.prototype.getDisplayWorkArea = function(windowId) {
 
 /**
  * @desc Tiles window
+ * @private
  * @param {string} movement
  */
-chromewm.background.prototype.tileWindow = function(movement) {
-  DEBUG_TILING && console.log('INFO: background.tileWindow(',movement,')');
+chromewm.background.prototype.tileWindow_ = function(movement) {
+  DEBUG_CALLS && console.log('tileWindow_(',movement,')');
+
   var newSize = {};
   chrome.windows.getLastFocused((window_) => {
-    this.getDisplayWorkArea(window_.id).then((workArea) => {
+    this.getDisplayWorkArea_(window_.id).then((workArea) => {
       var tileSize = {
         height: Math.round(workArea.height/2),
         width: Math.round(workArea.width/2)
@@ -393,17 +400,10 @@ chromewm.background.prototype.tileWindow = function(movement) {
           }
           break;
         default:
-          console.log('ERROR: Unrecognized command recieved in tileWindow: ',
+          console.log('ERROR: Unrecognized command recieved in tileWindow_: ',
               movement);
           return;
       };
-
-      DEBUG_TILING && console.log('DATA: background.tileWindow: ',
-          'window_:',window_,
-          'workArea:', workArea,
-          'workAreaCenter:', workAreaCenter,
-          'newSize:', newSize
-          );
 
       if (window_.state == 'maximized') {
         chrome.windows.update(window_.id, {state: 'normal'});
@@ -414,51 +414,64 @@ chromewm.background.prototype.tileWindow = function(movement) {
 }
 
 
-/**
-* @desc Handles command recieved
+
+
+/////////////////////////////////////////////
+//  Core functions: Storage and Listeners  //
+/////////////////////////////////////////////
+
+/** DONE
+* @desc Handles keyboard commands
+* @private
 * @param {string} command
 */
-chromewm.background.prototype.handleCommand = function(command) {
-  DEBUG_CALLS && console.log('INFO: background.handleCommand(',command,')');
+chromewm.background.prototype.commandListener_ = function(command) {
+  DEBUG_CALLS && console.log('commandListener_(',command,')');
+
   if (goog.string.startsWith(command, 'tile-')) {
-    this.tileWindow(command);
+    this.tileWindow_(command);
     return;
   }
   if (goog.string.startsWith(command, 'ws-')) {
-    this.switchWorkspace(command);
+    this.changeWorkspace_(command);
     return;
   }
 }
 
 
-/**
+/** DONE
+ * @desc Adds a window to the local Storage (this.storage_)
+ * @private
+ * @param {!Object} thisWindowObj
+ */
+chromewm.background.prototype.saveWindowToStorage_ = function(thisWindowObj) {
+  DEBUG_CALLS && console.log('saveWindowToStorage_(',thisWindowObj,')');
+
+  var windowIdStr = thisWindowObj.id.toString();
+  this.storage_.set(windowIdStr + '-focused', thisWindowObj.focused);
+  this.storage_.set(windowIdStr + '-state', thisWindowObj.state);
+  this.storage_.set(windowIdStr + '-tabs', thisWindowObj.tabs);
+  this.storage_.set(windowIdStr + '-workspace', thisWindowObj.workspace);
+}
+
+
+/** DONE
  * @desc Removes a window from the local Storage (this.storage_)
  * @private
  * @param {!number} windowId
  */
 chromewm.background.prototype.removeWindowFromStorage_ = function(windowId) {
+  DEBUG_CALLS && console.log('removeWindowFromStorage_(',windowId,')');
+
   var windowIdStr = windowId.toString();
   this.storage_.remove(windowIdStr + '-focused');
   this.storage_.remove(windowIdStr + '-state');
   this.storage_.remove(windowIdStr + '-tabs');
-  this.storage_.remove(windowIdStr + '-ws');
+  this.storage_.remove(windowIdStr + '-workspace');
 }
 
 
-/**
- * @desc Saves an object in the local storage
- * @private
- * @param {!Object} objectToSave
- */
-chromewm.background.prototype.saveLocally_ = function(objectToSave) {
-  DEBUG_DEV && console.log('INFO: saveLocally_ saving:', objectToSave);
-  goog.object.forEach(objectToSave || [], (value_,key_,object_) => {
-    this.storage_.set(key_, value_);
-  });
-}
-
-
-/**
+/** DONE
  * Create and start extension
  */
 /** @type {chromewm.background} backgroundMain */
