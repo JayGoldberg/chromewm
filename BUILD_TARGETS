@@ -10,6 +10,7 @@ html/options.html
 
 # CSS
 css/style.css
+css/material.min.css
 
 # Statics
 static/manifest.json

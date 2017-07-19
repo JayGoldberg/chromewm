@@ -23,6 +23,8 @@ goog.require('goog.events');
 chromewm.options = function() {
   /** @private {Element} workspaceQty_ */
   this.workspaceQty_ = goog.dom.getElement('workspaceQty');
+  /** @private {Element} workspaceQtyRange_ */
+  this.workspaceQtyRange_ = goog.dom.getElement('workspaceQtyRange');
 }
 
 
@@ -34,7 +36,13 @@ chromewm.options.prototype.Init = function() {
   this.Load_();
 
   goog.events.listen(
-    this.workspaceQty_,
+    this.workspaceQtyRange_,
+    goog.events.EventType.MOUSEMOVE,
+    () => { this.updateWorkspaceQty_()}
+  );
+
+  goog.events.listen(
+    this.workspaceQtyRange_,
     goog.events.EventType.CHANGE,
     () => { this.Save_()}
   );
@@ -47,13 +55,20 @@ chromewm.options.prototype.Init = function() {
   );
 }
 
+/**
+ * @desc Updateds workspaceQty_ number
+ * @private
+ */
+chromewm.options.prototype.updateWorkspaceQty_ = function() {
+  this.workspaceQty_.innerHTML = this.workspaceQtyRange_.value;
+}
 
 /**
  * @desc Saves options
  * @private
  */
 chromewm.options.prototype.Save_ = function() {
-  localStorage.setItem('workspaceQty_', this.workspaceQty_.value);
+  localStorage.setItem('workspaceQty_', this.workspaceQtyRange_.value);
 }
 
 
@@ -62,7 +77,8 @@ chromewm.options.prototype.Save_ = function() {
  * @private
  */
 chromewm.options.prototype.Load_ = function() {
-  this.workspaceQty_.value = localStorage.getItem('workspaceQty_') || 1;
+  this.workspaceQtyRange_.value = localStorage.getItem('workspaceQty_') || 1;
+  this.workspaceQty_.innerHTML = this.workspaceQtyRange_.value;
 }
 
 
