@@ -88,18 +88,23 @@ mkdir -p $OUTPUT_PATH
 
 while read TARGET; do
   [[ "$TARGET" == "#"* || -z "$TARGET" ]] && continue
-  [ ! -f $TARGET ] && echo -e "${RED}ERROR:${NC} File $TARGET doesn't exist" \
+
+  DIRNAME=`dirname $TARGET | head -1`
+  for FILENAME in `basename -a $TARGET`; do
+    INPUT_FILE="$DIRNAME/$FILENAME"
+  [ ! -f $INPUT_FILE ] && echo -e "${RED}ERROR:${NC} File $INPUT_FILE doesn't exist" \
       && continue
-  FILENAME=`basename $TARGET`
+
   # Compiles only if the source file changed.
   # TODO(): Compile if dependencies changed
- [ ! $TARGET -nt $OUTPUT_PATH/$FILENAME ] && continue
 
-  case $TARGET in
+  [ ! "$INPUT_FILE" -nt "$OUTPUT_PATH/$FILENAME" ] && continue
+
+  case $FILENAME in
     # Compile if it's a JavaScript file
     *.js)
-      echo -e "${GREEN}Compiling${NC} $TARGET"
-      NAME_SPACE=$(getNamespace $TARGET)
+      echo -e "${GREEN}Compiling${NC} $INPUT_FILE"
+      NAME_SPACE=$(getNamespace $INPUT_FILE)
       BUILD_TARGET="--entry_point=$NAME_SPACE --js_output_file=$OUTPUT_PATH/$FILENAME"
       BUILD_COMMAND="$JS_COMPILER $JS_COMPILER_PARAMETERS $BUILD_TARGET"
       eval $BUILD_COMMAND
@@ -107,8 +112,9 @@ while read TARGET; do
     # Copy everything else
     # TODO(): Allow to use wildcards in BUILD_TARGETS file
     ?*)
-      echo -e "${GREEN}Coping${NC} $TARGET"
-      cp $TARGET $OUTPUT_PATH/$FILENAME
+      echo -e "${GREEN}Coping${NC} $INPUT_FILE"
+      cp $INPUT_FILE $OUTPUT_PATH/$FILENAME
   esac
+done
 done < BUILD_TARGETS
 echo -e "${GREEN}Build Completed!${NC}"

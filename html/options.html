@@ -1,44 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- TODO(): Putt all styles in external file -->
-  <!-- TODO(): Bring Material Lite locally, and compile CSS and JS -->
-  <!-- TODO(): Do I need to call this API? - It seems I don't so far-->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" type="text/css" href="material.min.css">
-  <!-- TODO(): Include Material.min.js in build process -->
   <script defer src="material.min.js"></script>
   <link rel="stylesheet" type="text/css" href="style.css">
 </head>
+
 <body>
-  <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header mdl-layout--no-drawer-button">
+  <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header
+      mdl-layout--no-drawer-button">
+
     <header class="mdl-layout__header">
       <div class="mdl-layout__header-row">
-        <!-- TODO(): Center title -->
-        <!-- TODO(): Maybe reduce heigth of header? -->
-        <span class="mdl-layout__title" style="text-align: center">Chrome Windows Manager</span>
+        <span class="mdl-layout__title">Chrome Windows Manager</span>
       </div>
     </header>
 
     <main class="mdl-layout__content">
       <br>
-      Number of workspaces:
-      <div id="workspaceQty" style="display:inline-block">
+      <div class="centered-div">
+        Number of workspaces:
+        <span id="workspaceQty"></span>
       </div>
+      <div>
+        <input id="workspaceQtyRange" class="mdl-slider mdl-js-slider"
+            type="range" min="1" max="9" value="1">
+      </div>
+      <br>
 
-      <div style="width:200px">
-        <input id="workspaceQtyRange" class="mdl-slider mdl-js-slider" type="range"
-          min="1" max="9" value="1" tabindex="0">
-      </div>
-      <br>
-      NOTE: If you haven't done it, you'll need to configure the shortcuts for switching workspaces:
-      <br>
-      <!-- TODO(): Center button -->
-      <div style="margin:auto; width:80%">
-        <button id="confCommands" class="mdl-button mdl-js-button mdl-button--colored mdl-button--raised">Configure shortcuts</button>
+      <div class="centered-div">
+        <button id="confCommands" class="mdl-button mdl-js-button
+            mdl-button--colored mdl-button--raised">Configure shortcuts</button>
       </div>
     </main>
+
   </div>
+
   <script src="options.js"></script>
 </body>
 </html>

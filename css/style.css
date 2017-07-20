@@ -1,3 +1,25 @@
 body {
-  min-width: 350px;
+  width: 260px;
+  height: 150px;
+  font-size: 16px;
+}
+.centered-div {
+  text-align: center;
+}
+.mdl-layout__header {
+  min-height: 28px;
+}
+.mdl-layout__header-row {
+  height: 28px;
+}
+.mdl-layout__title {
+  font-size: 18px;
+  font-style:oblique;
+  margin: auto;
+  padding-top: 4px;
+}
+.mdl-button {
+  height: 28px;
+  line-height: 28px;
+  padding-top: 2px;
 }

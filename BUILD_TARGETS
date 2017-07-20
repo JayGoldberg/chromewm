@@ -6,33 +6,11 @@ js/background.js
 js/options.js
 
 # HTMLs
-html/options.html
+html/*
 
 # CSS
 css/style.css
 css/material.min.css
 
 # Statics
-static/manifest.json
-static/icon-16.png
-static/icon-38.png
-static/icon-48.png
-static/icon-128.png
-static/icon-38-1.png
-static/icon-38-2.png
-static/icon-38-3.png
-static/icon-38-4.png
-static/icon-38-5.png
-static/icon-38-6.png
-static/icon-38-7.png
-static/icon-38-8.png
-static/icon-38-9.png
-static/icon-64-1.png
-static/icon-64-2.png
-static/icon-64-3.png
-static/icon-64-4.png
-static/icon-64-5.png
-static/icon-64-6.png
-static/icon-64-7.png
-static/icon-64-8.png
-static/icon-64-9.png
+static/*
