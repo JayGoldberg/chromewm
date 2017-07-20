@@ -17,7 +17,7 @@
   },
   "options_ui": {
     "page": "options.html",
-    "chrome_style": true
+    "chrome_style": false
   },
   "background": {
     "scripts": ["background.js"]

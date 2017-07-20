@@ -12,7 +12,7 @@
 goog.provide('chromewm.background');
 
 goog.require('goog.array');
-// goog.require('goog.events');
+goog.require('goog.events');
 goog.require('goog.object');
 goog.require('goog.storage.mechanism.HTML5LocalStorage');
 goog.require('goog.string');
@@ -92,20 +92,17 @@ chromewm.background.prototype.Init = async function() {
   );
 
 
-  //TODO(): replace by goog.events
-  /** Initializes Listeners */
-  window.addEventListener(
-      'storage',
-      (e) => {
-        console.log('Storage Changed:', e);
-        this.maxWorkspaces_ = e.newValue;
-      }
+  goog.events.listen(
+    window,
+    goog.events.EventType.STORAGE,
+    (e) => {
+      this.maxWorkspaces_ = goog.string.toNumber(e.event_.newValue);
+    }
   );
 
   chrome.commands.onCommand.addListener( (command) => {
       this.commandListener_(command);
     });
-
 
 }
 

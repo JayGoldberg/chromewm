@@ -2,19 +2,11 @@
  * @fileoverview Options file
  * @author EduCampi
 */
-// TODO(): See If I can read the keyboard shortcuts and drop them into the console.
-/**
-Para abrir el popup de conf commands, puedo ver las dimensiones del
-id="extension-commands-overlay"
-Para eso necesito un content script que lea las dimensiones y se las mande
-a la options page para hacer resize de la window.Parece demasiado"
-*/
-
 goog.provide('chromewm.options');
 
 goog.require('goog.dom');
 goog.require('goog.events');
-
+goog.require('goog.storage.mechanism.HTML5LocalStorage');
 
 /**
  * @desc Defines Options Object
@@ -25,6 +17,8 @@ chromewm.options = function() {
   this.workspaceQty_ = goog.dom.getElement('workspaceQty');
   /** @private {Element} workspaceQtyRange_ */
   this.workspaceQtyRange_ = goog.dom.getElement('workspaceQtyRange');
+  /** @private {Object} storage_ */
+  this.storage_= new goog.storage.mechanism.HTML5LocalStorage();
 }
 
 
@@ -68,7 +62,7 @@ chromewm.options.prototype.updateWorkspaceQty_ = function() {
  * @private
  */
 chromewm.options.prototype.Save_ = function() {
-  localStorage.setItem('workspaceQty_', this.workspaceQtyRange_.value);
+  this.storage_.set('workspaceQty_', this.workspaceQtyRange_.value);
 }
 
 
@@ -77,7 +71,7 @@ chromewm.options.prototype.Save_ = function() {
  * @private
  */
 chromewm.options.prototype.Load_ = function() {
-  this.workspaceQtyRange_.value = localStorage.getItem('workspaceQty_') || 1;
+  this.workspaceQtyRange_.value = this.storage_.get('workspaceQty_') || 1;
   this.workspaceQty_.innerHTML = this.workspaceQtyRange_.value;
 }
 
