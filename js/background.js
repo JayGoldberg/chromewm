@@ -6,7 +6,6 @@
 // TODO(): Implement Promises properly, resolve and reject
 // TODO(): Cleanup and improve code quality
 // TODO(): Move windows to other workspaces (alt+tab?)
-// TODO(): Update this.windows__ if tabs hash changes, not only when leaving ws
 // TODO(): Improve/fix Initialization after crash
 
 goog.provide('chromewm.background');
@@ -100,17 +99,110 @@ chromewm.background.prototype.Init = async function() {
     }
   );
 
+  chrome.tabs.onUpdated.addListener( (tabId, changeInfo, tab) => {
+    if (changeInfo.status == "complete") {
+      this.updateWindow_(tab.windowId);
+    }
+  });
+
+  chrome.tabs.onMoved.addListener( (windowId, fromIndx, toIndx) => {
+    this.updateWindow_(windowId);
+  });
+
+  //TODO(): What if create a new window while attaching
+  chrome.tabs.onAttached.addListener( (tabId, attachInfo) => {
+    this.updateWindow_(attachInfo.newWindowId);
+  });
+
+  //TODO(): Posibility for window being removed
+  chrome.tabs.onDetached.addListener( (tabId, detachInfo) => {
+    this.updateWindow_(detachInfo.oldWindowId);
+  });
+
+  chrome.tabs.onRemoved.addListener( (tabId, removeInfo) => {
+      this.updateWindow_(removeInfo.windowId);
+
+  });
+
+  chrome.windows.onRemoved.addListener( (windowId) => {
+    goog.array.removeIf(this.windows_, (thisWindow_,i,a) => {
+      return thisWindow_.id == windowId;
+    });
+    this.removeWindowFromStorage_(windowId);
+  });
+
   chrome.commands.onCommand.addListener( (command) => {
       this.commandListener_(command);
     });
 
 }
 
+
+/**
+ * @desc Updates the tabs hash in this.windows_ and this.storage_
+ * for the provided windowId
+ * @private
+ * @param {number} windowId
+  */
+// TODO(): Doesn't work if thisWindow_ is not populated.
+// (never switched workspaces so it was never saved.
+// Will it work with right Init function?)
+chromewm.background.prototype.updateWindow_ = function(windowId) {
+  console.log('windowId', windowId);
+
+  // TODO(): Check if exists in thisWindow_, if it does, update.
+  // There's a race condition, as the windows.onRemoved doesn't get to
+  // delete the window from this.windows_ before I check it here.
+  // Deberia poder verificar si existe la window_ usando chrome.windows,get
+  // pero parece tirar un falso positivo.
+  if (goog.array.find(this.windows_, (thisWindow_,indx,a) => {
+      return thisWindow_.id == windowId;})) {
+    console.log('Found in this.Windows_');
+
+    chrome.windows.get(windowId, {populate: true}, (window_) => {
+      var tabs = goog.string.hashCode(
+          window_.tabs.length.toString() +
+          goog.array.last(window_.tabs).url);
+      goog.array.some(this.windows_, (thisWindow_, indx, a) => {
+        if (thisWindow_.id == windowId && thisWindow_.tabs != tabs) {
+          console.log('thisWindow_', thisWindow_);
+          console.log('tabs', tabs);
+          this.windows_[indx].tabs = tabs;
+          this.storage_.set(windowId.toString() + '-tabs', tabs);
+          return true;
+        }
+        return false;
+      });
+    });
+  }
+}
+
+//TODO(): Para que funcione esto, tengo que tener actualizadas las windows todo el tiempo
+chromewm.background.prototype.Init2 = function() {
+  return new Promise(resolve => {
+    this.getWindowsFromStorage_().then(savedWindows_ => {
+      var savedLength = savedWindows_.length;
+      var timer = setInterval( () => {
+        chrome.windows.getAll((windows_) => {
+          if (windows_.length >= savedLength) {
+            clearInterval(timer);
+            resolve();
+          }
+        });
+      }, 500);
+    });
+  });
+}
+
+
 /**
  */
 chromewm.background.prototype.waitForWindows_ = function() {
   return new Promise(resolve => {
     var timer = setInterval( () => {
+      //TODO(): Something that allows to go on if it starts from scratch
+      // Should wait if the current amount of windows is less than saved
+      // Or if saved equals 1 with 1 tabs.lenght or less, then enable extension
       chrome.windows.getAll((windows_) => {
         var largo = windows_.length;
         if (largo > 1) {

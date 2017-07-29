@@ -103,7 +103,7 @@ while read TARGET; do
   case $FILENAME in
     # Compile if it's a JavaScript file
     *.js)
-      echo -e "${GREEN}Compiling${NC} $INPUT_FILE"
+      echo -e "$(date +%I:%M:%S) ${GREEN}Compiling${NC} $INPUT_FILE"
       NAME_SPACE=$(getNamespace $INPUT_FILE)
       BUILD_TARGET="--entry_point=$NAME_SPACE --js_output_file=$OUTPUT_PATH/$FILENAME"
       BUILD_COMMAND="$JS_COMPILER $JS_COMPILER_PARAMETERS $BUILD_TARGET"
@@ -112,9 +112,9 @@ while read TARGET; do
     # Copy everything else
     # TODO(): Allow to use wildcards in BUILD_TARGETS file
     ?*)
-      echo -e "${GREEN}Coping${NC} $INPUT_FILE"
+      echo -e "$(date +%I:%M:%S) ${GREEN}Coping${NC} $INPUT_FILE"
       cp $INPUT_FILE $OUTPUT_PATH/$FILENAME
   esac
 done
 done < BUILD_TARGETS
-echo -e "${GREEN}Build Completed!${NC}"
+echo -e "$(date +%I:%M:%S) ${GREEN}Build Completed!${NC}"
