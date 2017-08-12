@@ -7,6 +7,7 @@
 // TODO(): Cleanup and improve code quality
 // TODO(): Move windows to other workspaces (alt+tab?)
 // TODO(): Improve/fix Initialization after crash
+// TODO(): Initialization. Need to get all Windows on this.windows_ when starting from scratch (extension installation)
 
 goog.provide('chromewm.background');
 
@@ -50,7 +51,7 @@ chromewm.background.prototype.Init = async function() {
 
   this.storage_ = new goog.storage.mechanism.HTML5LocalStorage();
 
-  this.maxWorkspaces_ = parseInt(this.storage_.get('workspaceQty_'),10) || 1;
+  this.maxWorkspaces_ = goog.string.parseInt(this.storage_.get('workspaceQty_')) || 1;
   // this.storage_.clear();
   // this.maxWorkspaces_ = 3;
   // Waits for Windows to reload after a Chrome crash.
@@ -67,9 +68,9 @@ chromewm.background.prototype.Init = async function() {
               goog.array.last(window_.tabs).url)) {
 
             this.windows_.push({
+              focused: sW_.focused,
               id: window_.id,
               state: sW_.state,
-              focused: sW_.focused,
               tabs: sW_.tabs,
               workspace: sW_.workspace
             });
@@ -109,26 +110,16 @@ chromewm.background.prototype.Init = async function() {
     this.updateWindow_(windowId);
   });
 
-  //TODO(): What if create a new window while attaching
   chrome.tabs.onAttached.addListener( (tabId, attachInfo) => {
     this.updateWindow_(attachInfo.newWindowId);
   });
 
-  //TODO(): Posibility for window being removed
   chrome.tabs.onDetached.addListener( (tabId, detachInfo) => {
     this.updateWindow_(detachInfo.oldWindowId);
   });
 
   chrome.tabs.onRemoved.addListener( (tabId, removeInfo) => {
       this.updateWindow_(removeInfo.windowId);
-
-  });
-
-  chrome.windows.onRemoved.addListener( (windowId) => {
-    goog.array.removeIf(this.windows_, (thisWindow_,i,a) => {
-      return thisWindow_.id == windowId;
-    });
-    this.removeWindowFromStorage_(windowId);
   });
 
   chrome.commands.onCommand.addListener( (command) => {
@@ -139,43 +130,48 @@ chromewm.background.prototype.Init = async function() {
 
 
 /**
- * @desc Updates the tabs hash in this.windows_ and this.storage_
- * for the provided windowId
+ * @desc Updates the entry for windowId in this.windows_ and this.storage_
  * @private
- * @param {number} windowId
-  */
-// TODO(): Doesn't work if thisWindow_ is not populated.
-// (never switched workspaces so it was never saved.
-// Will it work with right Init function?)
+ * @param {!number} windowId
+ */
 chromewm.background.prototype.updateWindow_ = function(windowId) {
-  console.log('windowId', windowId);
+  DEBUG_CALLS && console.log('updateWindow_ ', windowId);
 
-  // TODO(): Check if exists in thisWindow_, if it does, update.
-  // There's a race condition, as the windows.onRemoved doesn't get to
-  // delete the window from this.windows_ before I check it here.
-  // Deberia poder verificar si existe la window_ usando chrome.windows,get
-  // pero parece tirar un falso positivo.
-  if (goog.array.find(this.windows_, (thisWindow_,indx,a) => {
-      return thisWindow_.id == windowId;})) {
-    console.log('Found in this.Windows_');
-
-    chrome.windows.get(windowId, {populate: true}, (window_) => {
-      var tabs = goog.string.hashCode(
+  chrome.windows.get(windowId, {populate: true}, (window_) => {
+    if (window_.tabs.length == 0) {
+      goog.array.removeIf(this.windows_, (thisWindow_,i,a) => {
+        return thisWindow_.id == windowId;
+      });
+      this.removeWindowFromStorage_(windowId);
+    } else {
+      var tabs_ = goog.string.hashCode(
           window_.tabs.length.toString() +
           goog.array.last(window_.tabs).url);
-      goog.array.some(this.windows_, (thisWindow_, indx, a) => {
-        if (thisWindow_.id == windowId && thisWindow_.tabs != tabs) {
-          console.log('thisWindow_', thisWindow_);
-          console.log('tabs', tabs);
-          this.windows_[indx].tabs = tabs;
-          this.storage_.set(windowId.toString() + '-tabs', tabs);
+      if (!goog.array.some(this.windows_, (thisWindow_, indx, a) => {
+        if (thisWindow_.id == windowId) {
+          if (thisWindow_.tabs != tabs_) {
+            this.windows_[indx].tabs = tabs_;
+            this.storage_.set(windowId.toString() + '-tabs', tabs_);
+          }
           return true;
+        } else {
+          return false;
         }
-        return false;
-      });
-    });
-  }
+      })) {
+        var windowToSave = {
+            focused: window_.focused,
+            id: window_.id,
+            state: window_.state,
+            tabs: tabs_,
+            workspace: this.currentWorkspace_
+        };
+        this.windows_.push(windowToSave);
+        this.saveWindowToStorage_(windowToSave);
+      }
+    }
+  });
 }
+
 
 //TODO(): Para que funcione esto, tengo que tener actualizadas las windows todo el tiempo
 chromewm.background.prototype.Init2 = function() {
@@ -232,11 +228,13 @@ chromewm.background.prototype.getWindowsFromStorage_ = function() {
         if (!isNaN(prefixNumber) && prefixNumber != windowId) {
           windowId = prefixNumber.toString();
           goog.array.insert(windows_, {
+            focused: this.storage_.get(windowId + '-focused') == 'true',
             id: prefixNumber,
-            focused: this.storage_.get(windowId + '-focused'),
             state: this.storage_.get(windowId + '-state'),
-            tabs: this.storage_.get(windowId + '-tabs'),
-            workspace: this.storage_.get(windowId + '-workspace')
+            tabs: goog.string.parseInt(
+                this.storage_.get(windowId + '-tabs')),
+            workspace: goog.string.parseInt(
+                this.storage_.get(windowId + '-workspace')) || 1
           });
         }
       }
@@ -537,10 +535,12 @@ chromewm.background.prototype.saveWindowToStorage_ = function(thisWindowObj) {
   DEBUG_CALLS && console.log('saveWindowToStorage_(',thisWindowObj,')');
 
   var windowIdStr = thisWindowObj.id.toString();
-  this.storage_.set(windowIdStr + '-focused', thisWindowObj.focused);
+  this.storage_.set(windowIdStr + '-focused', thisWindowObj.focused == 'true');
   this.storage_.set(windowIdStr + '-state', thisWindowObj.state);
-  this.storage_.set(windowIdStr + '-tabs', thisWindowObj.tabs);
-  this.storage_.set(windowIdStr + '-workspace', thisWindowObj.workspace);
+  this.storage_.set(windowIdStr + '-tabs',
+      goog.string.parseInt(thisWindowObj.tabs));
+  this.storage_.set(windowIdStr + '-workspace',
+      goog.string.parseInt(thisWindowObj.workspace));
 }
 
 

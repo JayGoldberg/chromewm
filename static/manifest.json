@@ -48,10 +48,10 @@
       }
     },
     "ws-next": {
-      "description": "Next workspace:"
+      "description": "Next workspace: (Alt+X)"
     },
     "ws-prev": {
-      "description": "Previous workspace:"
+      "description": "Previous workspace: (Alt+Z)"
     }
   },
   "permissions": [
