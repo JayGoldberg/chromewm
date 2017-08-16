@@ -5,11 +5,9 @@
 
 // TODO(): Implement Promises properly, resolve and reject
 // TODO(): Cleanup and improve code quality
-// TODO(): Move windows to other workspaces (alt+tab?)
 // TODO(): Improve/fix Initialization after crash
 // TODO(): Initialization. Need to get all Windows on this.windows_ when starting from scratch (extension installation)
-// TODO(): Checkear si puedo asignar por referencia al recorrer los array
-
+// TODO(): Can assign per reference, see what can be improved.
 goog.provide('chromewm.background');
 
 goog.require('goog.array');
@@ -132,17 +130,21 @@ chromewm.background.prototype.Init = async function() {
         this.updateWindow_(removeInfo.windowId);
     });
 
+    // TODO(): MAke this listener pretier
     chrome.windows.onFocusChanged.addListener( (windowId) => {
-      if (windowId > 0) {
-        goog.array.forEach(this.windows_, (thisWindow_, indx, a) => {
+      if (windowId != chrome.windows.WINDOW_ID_NONE) {
+        goog.array.forEach(this.windows_, (thisWindow_, i, a) => {
+          var shouldBeFocused = (thisWindow_.id == windowId);
           if (thisWindow_.workspace == this.currentWorkspace_) {
-            var shouldBeFocused = thisWindow_.id == windowId;
             if (shouldBeFocused || thisWindow_.focused) {
-              console.log('Changing Window', thisWindow_.id, 'focus to', shouldBeFocused);
-              this.windows_[indx].focused = shouldBeFocused;
+              thisWindow_.focused = shouldBeFocused;
               this.storage_.set(thisWindow_.id.toString() + '-focused',
                   shouldBeFocused);
             }
+          } else if (shouldBeFocused) {
+            thisWindow_.workspace = this.currentWorkspace_;
+            this.storage_.set(thisWindow_.id.toString() + '-workspace',
+                this.currentWorkspace_);
           }
         });
       }
