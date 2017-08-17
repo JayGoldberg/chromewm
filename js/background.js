@@ -3,11 +3,13 @@
  * @author EduCampi
  */
 
-// TODO(): Implement Promises properly, resolve and reject
-// TODO(): Cleanup and improve code quality
-// TODO(): Improve/fix Initialization after crash
-// TODO(): Initialization. Need to get all Windows on this.windows_ when starting from scratch (extension installation)
-// TODO(): Can assign per reference, see what can be improved.
+// TODO(): 1) Cleanup and improve code quality
+// TODO(): 1a) Can assign per reference, see what can be improved.
+// TODO(): 1b) Implement Promises properly, resolve and reject
+
+// TODO(): Migrate storage to IndexedDB as localStorage is not persistent on crash
+// https://w3c.github.io/IndexedDB/
+
 goog.provide('chromewm.background');
 
 goog.require('goog.array');
@@ -44,22 +46,17 @@ chromewm.background = function() {
 /**
 * @desc Initializes the Main object
 */
-chromewm.background.prototype.Init = async function() {
+chromewm.background.prototype.Init = function() {
 
   this.maxWorkspaces_ = goog.string.parseInt(
       this.storage_.get('workspaceQty_')) || 1;
 
-  // Waits for Windows to reload after a Chrome crash.
-  var waitW = await this.waitForWindows_();
-  console.log('INIT 1 Found Windows', waitW);
-
-  this.getWindowsFromStorage_().then(savedWindows_ => {
-    console.log('INIT 2 savedWindows_', savedWindows_);
-
+  this.waitForWindows_().then(savedWindows_ => {
+    console.log('INIT 1 savedWindows_', savedWindows_);
     chrome.windows.getAll({'populate': true}, (windows_) => {
-      console.log('INIT 3 windows_', windows_);
+      console.log('INIT 2 windows_', windows_);
       goog.array.forEach(windows_, (window_,i,a) => {
-        var windowToSave_ = [];
+        var windowToSave_ = {};
         var tabs_ = goog.string.hashCode(
             window_.tabs.length.toString() +
             goog.array.last(window_.tabs).url);
@@ -70,7 +67,7 @@ chromewm.background.prototype.Init = async function() {
                 focused: sW_.focused,
                 id: window_.id,
                 state: sW_.state,
-                tabs: sW_.tabs,
+                tabs: tabs_,
                 workspace: sW_.workspace
               };
               return true;
@@ -88,16 +85,15 @@ chromewm.background.prototype.Init = async function() {
         }
         this.windows_.push(windowToSave_);
       });
-      console.log('INIT 4 this.windows_', this.windows_);
-
-    console.log('INIT 5 updating storage');
+    console.log('INIT 3 this.windows_', this.windows_);
+    console.log('INIT 4 showing workspace 1');
     this.showWorkspace_(1);
+    console.log('INIT 5 updating storage');
     this.storage_.clear();
     this.storage_.set('workspaceQty_', this.maxWorkspaces_);
     goog.array.forEach(this.windows_, (thisWindow_, i, a) => {
       this.saveWindowToStorage_(thisWindow_);
     });
-
 
     console.log('INIT 6 start listeners');
     goog.events.listen(
@@ -130,7 +126,7 @@ chromewm.background.prototype.Init = async function() {
         this.updateWindow_(removeInfo.windowId);
     });
 
-    // TODO(): MAke this listener pretier
+    // TODO(): Make this listener pretier
     chrome.windows.onFocusChanged.addListener( (windowId) => {
       if (windowId != chrome.windows.WINDOW_ID_NONE) {
         goog.array.forEach(this.windows_, (thisWindow_, i, a) => {
@@ -138,13 +134,15 @@ chromewm.background.prototype.Init = async function() {
           if (thisWindow_.workspace == this.currentWorkspace_) {
             if (shouldBeFocused || thisWindow_.focused) {
               thisWindow_.focused = shouldBeFocused;
-              this.storage_.set(thisWindow_.id.toString() + '-focused',
-                  shouldBeFocused);
+              this.saveWindowToStorage_({
+                  'id': thisWindow_.id,
+                  'focused': shouldBeFocused});
             }
           } else if (shouldBeFocused) {
             thisWindow_.workspace = this.currentWorkspace_;
-            this.storage_.set(thisWindow_.id.toString() + '-workspace',
-                this.currentWorkspace_);
+            this.saveWindowToStorage_({
+                'id': thisWindow_.id,
+                'workspace': this.currentWorkspace_});
           }
         });
       }
@@ -159,75 +157,23 @@ chromewm.background.prototype.Init = async function() {
 }
 
 
-//TODO(): For this to work, need to ensure Init populates this.windows_ on first run.
-chromewm.background.prototype.waitForWindows_2 = function() {
+/**
+ * @desc Waits Chrome to reload all windows after a crash
+ * @private
+ */
+chromewm.background.prototype.waitForWindows_ = function() {
   return new Promise(resolve => {
     this.getWindowsFromStorage_().then(savedWindows_ => {
       var savedLength = savedWindows_.length;
-
       var timer = setInterval( () => {
         chrome.windows.getAll((windows_) => {
           if (windows_.length >= savedLength) {
             clearInterval(timer);
-            resolve(4);
+            resolve(savedWindows_);
           }
         });
       }, 500);
     });
-  });
-}
-
-//
-/**
- */
-chromewm.background.prototype.waitForWindows_ = function() {
-  return new Promise(resolve => {
-
-    var timer = setInterval( () => {
-      chrome.windows.getAll((windows_) => {
-        var windowsQty = windows_.length;
-        if (windowsQty > 1) {
-          clearInterval(timer);
-          resolve(windowsQty);
-        }
-      });
-    }, 500);
-  });
-}
-
-
-/**
- * @desc Gets Windows from this.storage_
- * @private
- * @return {Promise}
- */
-chromewm.background.prototype.getWindowsFromStorage_ = function() {
-  return new Promise((resolve, reject) => {
-    var storageIterator = this.storage_.__iterator__(true);
-    var windows_ = [];
-    var prefixNumber, windowId;
-
-    while (true) {
-      try{
-        prefixNumber = goog.string.parseInt(storageIterator.next(true));
-        if (!isNaN(prefixNumber) && prefixNumber != windowId) {
-          windowId = prefixNumber.toString();
-          goog.array.insert(windows_, {
-            focused: String(this.storage_.get(windowId + '-focused')) == 'true',
-            id: prefixNumber,
-            state: this.storage_.get(windowId + '-state'),
-            tabs: goog.string.parseInt(
-                this.storage_.get(windowId + '-tabs')),
-            workspace: goog.string.parseInt(
-                this.storage_.get(windowId + '-workspace')) || 1
-          });
-        }
-      }
-      catch(err) {
-        break;
-      }
-    }
-    resolve(windows_);
   });
 }
 
@@ -253,8 +199,10 @@ chromewm.background.prototype.updateWindow_ = function(windowId) {
       if (!goog.array.some(this.windows_, (thisWindow_, indx, a) => {
         if (thisWindow_.id == windowId) {
           if (thisWindow_.tabs != tabs_) {
-            this.windows_[indx].tabs = tabs_;
-            this.storage_.set(windowId.toString() + '-tabs', tabs_);
+            thisWindow_.tabs = tabs_;
+            this.saveWindowToStorage_({
+                'id': windowId,
+                'tabs': tabs_});
           }
           return true;
         } else {
@@ -268,7 +216,6 @@ chromewm.background.prototype.updateWindow_ = function(windowId) {
             tabs: tabs_,
             workspace: this.currentWorkspace_
         };
-        console.log('WINDOW TO SAVE', windowToSave);
         this.windows_.push(windowToSave);
         this.saveWindowToStorage_(windowToSave);
       }
@@ -284,7 +231,7 @@ chromewm.background.prototype.updateWindow_ = function(windowId) {
 /**
  * @desc Provides visual feedback to user on workspace change
  * @private
- * @param {number} newWorkspace
+ * @param {!number} newWorkspace
  */
 chromewm.background.prototype.showWsTransition_ = function(newWorkspace) {
   chrome.notifications.create("workspaceChange", {
@@ -308,7 +255,7 @@ chromewm.background.prototype.showWsTransition_ = function(newWorkspace) {
 /** DONE
  * @desc Switches to new workspace
  * @private
- * @param {string} command
+ * @param {!string} command
  */
 chromewm.background.prototype.changeWorkspace_ = function(command) {
   DEBUG_CALLS && console.log('changeWorkspace_(',command,')');
@@ -358,7 +305,7 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
   } else {
     chrome.windows.update(windowIdInFocus, {focused: true});
   }
-  console.log('UPDATING this.currentWorkspace_');
+  console.log('UPDATING this.currentWorkspace_', this.currentWorkspace_,'to', newWorkspace);
   this.currentWorkspace_ = newWorkspace;
   this.showWsTransition_(newWorkspace);
   console.log('AND this.windows_ is', this.windows_);
@@ -372,35 +319,9 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
 ////////////////////////////////////////////
 
 /**
- * @desc Gets the display's work area where the window is.
- * @private
- * @param {!number} windowId
- * @return {Promise}
- */
-chromewm.background.prototype.getDisplayWorkArea_ = function(windowId) {
-  var displayInFocus = {};
-  return new Promise((resolve, reject) => {
-    chrome.system.display.getInfo( (displays) => {
-      chrome.windows.get(windowId, (window_) => {
-        displayInFocus = goog.array.find(displays, (display, i, a) => {
-          return (window_.left < (display.workArea.left+display.workArea.width))
-            && (window_.top < (display.workArea.top + display.workArea.height))
-        });
-        if (goog.object.containsKey(displayInFocus, 'workArea')) {
-          resolve(displayInFocus.workArea)
-        } else {
-          reject(Error("Failed to getDisplayWorkArea_"));
-        }
-      });
-    });
-  });
-}
-
-
-/**
  * @desc Tiles window
  * @private
- * @param {string} movement
+ * @param {!string} movement
  */
 chromewm.background.prototype.tileWindow_ = function(movement) {
   DEBUG_CALLS && console.log('tileWindow_(',movement,')');
@@ -468,6 +389,32 @@ chromewm.background.prototype.tileWindow_ = function(movement) {
 }
 
 
+/**
+ * @desc Gets the display's work area where the window is.
+ * @private
+ * @param {!number} windowId
+ * @return {Promise}
+ */
+chromewm.background.prototype.getDisplayWorkArea_ = function(windowId) {
+  var displayInFocus = {};
+  return new Promise((resolve, reject) => {
+    chrome.system.display.getInfo( (displays) => {
+      chrome.windows.get(windowId, (window_) => {
+        displayInFocus = goog.array.find(displays, (display, i, a) => {
+          return (window_.left < (display.workArea.left+display.workArea.width))
+            && (window_.top < (display.workArea.top + display.workArea.height))
+        });
+        if (goog.object.containsKey(displayInFocus, 'workArea')) {
+          resolve(displayInFocus.workArea)
+        } else {
+          reject(Error("Failed to getDisplayWorkArea_"));
+        }
+      });
+    });
+  });
+}
+
+
 
 
 /////////////////////////////////////////////
@@ -477,7 +424,7 @@ chromewm.background.prototype.tileWindow_ = function(movement) {
 /** DONE
 * @desc Handles keyboard commands
 * @private
-* @param {string} command
+* @param {!string} command
 */
 chromewm.background.prototype.commandListener_ = function(command) {
   DEBUG_CALLS && console.log('commandListener_(',command,')');
@@ -497,17 +444,57 @@ chromewm.background.prototype.commandListener_ = function(command) {
  * @desc Adds a window to the local Storage (this.storage_)
  * @private
  * @param {!Object} thisWindowObj
+ * @param {!number} thisWindowObj.id
+ * @param {boolean=} thisWindowObj.focused
+ * @param {string=} thisWindowObj.state
+ * @param {number=} thisWindowObj.tabs
+ * @param {number=} thisWindowObj.workspace
  */
 chromewm.background.prototype.saveWindowToStorage_ = function(thisWindowObj) {
   DEBUG_CALLS && console.log('saveWindowToStorage_(',thisWindowObj,')');
 
   var windowIdStr = thisWindowObj.id.toString();
-  this.storage_.set(windowIdStr + '-focused', thisWindowObj.focused);
-  this.storage_.set(windowIdStr + '-state', thisWindowObj.state);
-  this.storage_.set(windowIdStr + '-tabs',
-      goog.string.parseInt(thisWindowObj.tabs));
-  this.storage_.set(windowIdStr + '-workspace',
-      goog.string.parseInt(thisWindowObj.workspace));
+  goog.object.forEach(thisWindowObj, (val_, key_, obj_) => {
+    if (key_ != 'id' ) {
+      this.storage_.set(windowIdStr + '-' + key_, val_);
+    }
+  });
+}
+
+
+/** DONE
+ * @desc Gets Windows from this.storage_
+ * @private
+ * @return {Promise}
+ */
+chromewm.background.prototype.getWindowsFromStorage_ = function() {
+  return new Promise((resolve, reject) => {
+    var storageIterator = this.storage_.__iterator__(true);
+    var windows_ = [];
+    var prefixNumber, windowId;
+
+    while (true) {
+      try{
+        prefixNumber = goog.string.parseInt(storageIterator.next(true));
+        if (!isNaN(prefixNumber) && prefixNumber != windowId) {
+          windowId = prefixNumber.toString();
+          goog.array.insert(windows_, {
+            focused: String(this.storage_.get(windowId + '-focused')) == 'true',
+            id: prefixNumber,
+            state: this.storage_.get(windowId + '-state'),
+            tabs: goog.string.parseInt(
+                this.storage_.get(windowId + '-tabs')),
+            workspace: goog.string.parseInt(
+                this.storage_.get(windowId + '-workspace')) || 1
+          });
+        }
+      }
+      catch(err) {
+        break;
+      }
+    }
+    resolve(windows_);
+  });
 }
 
 
