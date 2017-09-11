@@ -33,8 +33,8 @@ JS_COMPILER_BASIC="\
 
 JS_COMPILER_EXTRAS="\
 --externs=$JS_EXTERNS \
---js \"$JS_CLOSURE_LIBRARY_PATH/closure/goog/**.js\" \
---js \"\!$JS_CLOSURE_LIBRARY_PATH/closure/goog/**test.js\" \
+--js \"$JS_CLOSURE_LIBRARY_PATH/**.js\" \
+--js \"\!$JS_CLOSURE_LIBRARY_PATH/**test.js\" \
 --js \"./**.js\" \
 "
 
@@ -46,7 +46,6 @@ JS_COMPILER_CHECKS="\
 --jscomp_warning=deprecated \
 --jscomp_warning=deprecatedAnnotations \
 --jscomp_warning=extraRequire \
---jscomp_warning=inferredConstCheck \
 --jscomp_warning=functionParams \
 --jscomp_warning=missingReturn \
 --jscomp_warning=missingOverride \
@@ -103,7 +102,7 @@ while read TARGET; do
   case $FILENAME in
     # Compile if it's a JavaScript file
     *.js)
-      echo -e "$(date +%I:%M:%S) ${GREEN}Compiling${NC} $INPUT_FILE"
+      echo -e "$(date +%H:%M:%S) ${GREEN}Compiling${NC} $INPUT_FILE"
       NAME_SPACE=$(getNamespace $INPUT_FILE)
       BUILD_TARGET="--entry_point=$NAME_SPACE --js_output_file=$OUTPUT_PATH/$FILENAME"
       BUILD_COMMAND="$JS_COMPILER $JS_COMPILER_PARAMETERS $BUILD_TARGET"
@@ -112,9 +111,9 @@ while read TARGET; do
     # Copy everything else
     # TODO(): Allow to use wildcards in BUILD_TARGETS file
     ?*)
-      echo -e "$(date +%I:%M:%S) ${GREEN}Coping${NC} $INPUT_FILE"
+      echo -e "$(date +%H:%M:%S) ${GREEN}Coping${NC} $INPUT_FILE"
       cp $INPUT_FILE $OUTPUT_PATH/$FILENAME
   esac
 done
 done < BUILD_TARGETS
-echo -e "$(date +%I:%M:%S) ${GREEN}Build Completed!${NC}"
+echo -e "$(date +%H:%M:%S) ${GREEN}Build Completed!${NC}"
