@@ -71,7 +71,7 @@ chromewm.options.prototype.Save_ = function() {
  * @private
  */
 chromewm.options.prototype.Load_ = function() {
-  this.workspaceQtyRange_.value = this.storage_.get('workspaceQty_') || 1;
+  this.workspaceQtyRange_.value = this.storage_.get('workspaceQty_') || 4;
   this.workspaceQty_.innerHTML = this.workspaceQtyRange_.value;
 }
 

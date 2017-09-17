@@ -6,6 +6,8 @@
 // TODO(): 1) Cleanup and improve code quality
 // TODO(): 1a) Can assign objects per reference, see what can be improved.
 // TODO(): 1b) Implement Promises properly, resolve and reject
+// TODO(): 1c) What can be done async ?
+// TODO(): 2) IndexedDB not working for crashes
 
 goog.provide('chromewm.background');
 
@@ -16,8 +18,8 @@ goog.require('goog.object');
 goog.require('goog.storage.mechanism.HTML5LocalStorage');
 goog.require('goog.string');
 
-var DEBUG_CALLS = false; // Logs Method calls.
-var DEBUG_WS = false; // Debugs Workspaces
+var DEBUG_CALLS = true; // Logs Method calls.
+var DEBUG_WS = true; // Debugs Workspaces
 
 
 ////////////////////////////////////////////
@@ -32,7 +34,7 @@ chromewm.background = function() {
   /** @private {!Array<Object>} windows_ */
   this.windows_ = [];
   /** @private {number} maxWorkspaces_ */
-  this.maxWorkspaces_ = 1;
+  this.maxWorkspaces_ = 4;
   /** @private {number} currentWorkspace_ */
   this.currentWorkspace_ = 0;
   /** @private {Object} storage_ */
@@ -48,11 +50,12 @@ chromewm.background = function() {
 chromewm.background.prototype.Init = function() {
 
   this.maxWorkspaces_ = goog.string.parseInt(
-      this.storage_.get('workspaceQty_')) || 1;
+      this.storage_.get('workspaceQty_')) || 4;
 
   this.db_.getDB('chromewm', 1, [{name: 'windows', keyPath: 'id'}])
     .then( () => {
     this.waitForWindows_().then(savedWindows_ => {
+      console.log('INFO: savedWindows_', savedWindows_);
       chrome.windows.getAll({'populate': true}, (windows_) => {
         goog.array.forEach(windows_, (window_,i,a) => {
           var windowToSave_ = {};
@@ -98,7 +101,7 @@ chromewm.background.prototype.Init = function() {
 }
 
 
-/**
+/** DONE
  * @desc Start all listeners
  * @private
  */
@@ -133,7 +136,6 @@ chromewm.background.prototype.setListeners_ = function() {
       this.updateWindow_(removeInfo.windowId);
   });
 
-  // TODO(): Make this listener pretier
   chrome.windows.onFocusChanged.addListener( (windowId) => {
     if (windowId != chrome.windows.WINDOW_ID_NONE) {
       goog.array.forEach(this.windows_, (thisWindow_, i, a) => {
@@ -180,7 +182,7 @@ chromewm.background.prototype.waitForWindows_ = function() {
 
 
 /**
- * @desc Updates the entry for windowId in this.windows_ and this.storage_
+ * @desc Updates the entry for windowId in this.windows_ and this.db_
  * @private
  * @param {!number} windowId
  */
@@ -188,18 +190,21 @@ chromewm.background.prototype.updateWindow_ = function(windowId) {
   DEBUG_CALLS && console.log('updateWindow_ ', windowId);
 
   chrome.windows.get(windowId, {populate: true}, (window_) => {
-    if (window_.tabs.length == 0) {
+    if(chrome.runtime.lastError || window_.tabs.length == 0) {
       goog.array.removeIf(this.windows_, (thisWindow_,i,a) => {
         return thisWindow_.id == windowId;
       });
       this.db_.delByKey([windowId]);
+      return;
     } else {
       var tabs_ = goog.string.hashCode(
           window_.tabs.length.toString() +
           goog.array.last(window_.tabs).url);
+
       if (!goog.array.some(this.windows_, (thisWindow_, indx, a) => {
         if (thisWindow_.id == windowId) {
-          if (thisWindow_.tabs != tabs_) {
+          if (thisWindow_.tabs != tabs_ ||
+              thisWindow_.focused != window_.focused) {
             thisWindow_.tabs = tabs_;
             this.db_.addToStore([thisWindow_]);
           }
@@ -207,7 +212,7 @@ chromewm.background.prototype.updateWindow_ = function(windowId) {
         } else {
           return false;
         }
-      })) {
+        })) {
         var windowToSave = {
             focused: window_.focused,
             id: window_.id,
@@ -268,7 +273,6 @@ chromewm.background.prototype.changeWorkspace_ = function(command) {
 
 
 /**
- *  //TODO(): Kill and start window onFocus listener para evitar multiple saves
  * @desc Shows the specified workspace
  * @private
  * @param {!number} newWorkspace
@@ -285,8 +289,8 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
   goog.array.forEach(this.windows_, (thisWindow_,i,a) => {
     if (thisWindow_.workspace == this.currentWorkspace_) {
       if (thisWindow_.tabs == newWindowHash) {
-        chrome.windows.remove(thisWindow_.id);
         DEBUG_WS && console.log('REMOVING:', thisWindow_);
+        chrome.windows.remove(thisWindow_.id);
       } else {
         DEBUG_WS && console.log('HIDING:', thisWindow_);
         chrome.windows.update(thisWindow_.id, {state: 'minimized'});
