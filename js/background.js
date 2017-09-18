@@ -18,8 +18,8 @@ goog.require('goog.object');
 goog.require('goog.storage.mechanism.HTML5LocalStorage');
 goog.require('goog.string');
 
-var DEBUG_CALLS = true; // Logs Method calls.
-var DEBUG_WS = true; // Debugs Workspaces
+var DEBUG_CALLS = false; // Logs Method calls.
+var DEBUG_WS = false; // Debugs Workspaces
 
 
 ////////////////////////////////////////////
@@ -52,7 +52,7 @@ chromewm.background.prototype.Init = function() {
   this.maxWorkspaces_ = goog.string.parseInt(
       this.storage_.get('workspaceQty_')) || 4;
 
-  this.db_.getDB('chromewm', 1, [{name: 'windows', keyPath: 'id'}])
+  this.db_.getDB('chromewm', 1, [{'name': 'windows', 'keyPath': 'id'}])
     .then( () => {
     this.waitForWindows_().then(savedWindows_ => {
       console.log('INFO: savedWindows_', savedWindows_);
@@ -60,17 +60,17 @@ chromewm.background.prototype.Init = function() {
         goog.array.forEach(windows_, (window_,i,a) => {
           var windowToSave_ = {};
           var tabs_ = goog.string.hashCode(
-              window_.tabs.length.toString() +
-              goog.array.last(window_.tabs).url);
+              window_['tabs'].length.toString() +
+              goog.array.last(window_['tabs'])['url']);
 
           if (!goog.array.some(savedWindows_, (sW_, sI, sA) => {
-              if (sW_.tabs == tabs_) {
+              if (sW_['tabs'] == tabs_) {
                 windowToSave_ = {
-                  focused: sW_.focused,
-                  id: window_.id,
-                  state: sW_.state,
-                  tabs: tabs_,
-                  workspace: sW_.workspace
+                  'focused': sW_['focused'],
+                  'id': window_['id'],
+                  'state': sW_['state'],
+                  'tabs': tabs_,
+                  'ws': sW_['ws']
                 };
                 return true;
               } else {
@@ -78,11 +78,11 @@ chromewm.background.prototype.Init = function() {
               }
               })) {
             windowToSave_ = {
-              focused: window_.focused,
-              id: window_.id,
-              state: window_.state,
-              tabs: tabs_,
-              workspace: 1
+              'focused': window_['focused'],
+              'id': window_['id'],
+              'state': window_['state'],
+              'tabs': tabs_,
+              'ws': 1
             };
           }
           this.windows_.push(windowToSave_);
@@ -115,38 +115,38 @@ chromewm.background.prototype.setListeners_ = function() {
   );
 
   chrome.tabs.onUpdated.addListener( (tabId, changeInfo, tab) => {
-    if (changeInfo.status == "complete") {
-      this.updateWindow_(tab.windowId);
+    if (changeInfo['status'] == "complete") {
+      this.updateWindow_(tab['windowId']);
     }
   });
 
   chrome.tabs.onMoved.addListener( (tabId, moveInfo) => {
-    this.updateWindow_(moveInfo.windowId);
+    this.updateWindow_(moveInfo['windowId']);
   });
 
   chrome.tabs.onAttached.addListener( (tabId, attachInfo) => {
-    this.updateWindow_(attachInfo.newWindowId);
+    this.updateWindow_(attachInfo['newWindowId']);
   });
 
   chrome.tabs.onDetached.addListener( (tabId, detachInfo) => {
-    this.updateWindow_(detachInfo.oldWindowId);
+    this.updateWindow_(detachInfo['oldWindowId']);
   });
 
   chrome.tabs.onRemoved.addListener( (tabId, removeInfo) => {
-      this.updateWindow_(removeInfo.windowId);
+      this.updateWindow_(removeInfo['windowId']);
   });
 
   chrome.windows.onFocusChanged.addListener( (windowId) => {
     if (windowId != chrome.windows.WINDOW_ID_NONE) {
       goog.array.forEach(this.windows_, (thisWindow_, i, a) => {
-        var shouldBeFocused = (thisWindow_.id == windowId);
-        if (thisWindow_.workspace == this.currentWorkspace_) {
-          if (shouldBeFocused || thisWindow_.focused) {
-            thisWindow_.focused = shouldBeFocused;
+        var shouldBeFocused = (thisWindow_['id'] == windowId);
+        if (thisWindow_['ws'] == this.currentWorkspace_) {
+          if (shouldBeFocused || thisWindow_['focused']) {
+            thisWindow_['focused'] = shouldBeFocused;
             this.db_.addToStore([thisWindow_]);
           }
         } else if (shouldBeFocused) {
-          thisWindow_.workspace = this.currentWorkspace_;
+          thisWindow_['ws'] = this.currentWorkspace_;
           this.db_.addToStore([thisWindow_]);
         }
       });
@@ -189,23 +189,23 @@ chromewm.background.prototype.waitForWindows_ = function() {
 chromewm.background.prototype.updateWindow_ = function(windowId) {
   DEBUG_CALLS && console.log('updateWindow_ ', windowId);
 
-  chrome.windows.get(windowId, {populate: true}, (window_) => {
-    if(chrome.runtime.lastError || window_.tabs.length == 0) {
+  chrome.windows.get(windowId, {'populate': true}, (window_) => {
+    if(chrome.runtime.lastError || window_['tabs'].length == 0) {
       goog.array.removeIf(this.windows_, (thisWindow_,i,a) => {
-        return thisWindow_.id == windowId;
+        return thisWindow_['id'] == windowId;
       });
       this.db_.delByKey([windowId]);
       return;
     } else {
       var tabs_ = goog.string.hashCode(
-          window_.tabs.length.toString() +
-          goog.array.last(window_.tabs).url);
+          window_['tabs'].length.toString() +
+          goog.array.last(window_['tabs'])['url']);
 
       if (!goog.array.some(this.windows_, (thisWindow_, indx, a) => {
-        if (thisWindow_.id == windowId) {
-          if (thisWindow_.tabs != tabs_ ||
-              thisWindow_.focused != window_.focused) {
-            thisWindow_.tabs = tabs_;
+        if (thisWindow_['id'] == windowId) {
+          if (thisWindow_['tabs'] != tabs_ ||
+              thisWindow_['focused'] != window_['focused']) {
+            thisWindow_['tabs'] = tabs_;
             this.db_.addToStore([thisWindow_]);
           }
           return true;
@@ -214,11 +214,11 @@ chromewm.background.prototype.updateWindow_ = function(windowId) {
         }
         })) {
         var windowToSave = {
-            focused: window_.focused,
-            id: window_.id,
-            state: window_.state,
-            tabs: tabs_,
-            workspace: this.currentWorkspace_
+            'focused': window_['focused'],
+            'id': window_['id'],
+            'state': window_['state'],
+            'tabs': tabs_,
+            'ws': this.currentWorkspace_
         };
         this.windows_.push(windowToSave);
         this.db_.addToStore([windowToSave]);
@@ -239,11 +239,11 @@ chromewm.background.prototype.updateWindow_ = function(windowId) {
  */
 chromewm.background.prototype.showWsTransition_ = function(newWorkspace) {
   chrome.notifications.create("workspaceChange", {
-      type: "basic",
-      title: "\rWorkspace " + newWorkspace,
-      message: "",
-      iconUrl: "icon-64-" + newWorkspace + ".png",
-      priority: 2
+      'type': "basic",
+      'title': "\rWorkspace " + newWorkspace,
+      'message': "",
+      'iconUrl': "icon-64-" + newWorkspace + ".png",
+      'priority': 2
       },
       (notificationId_) => {
         setTimeout(() => {
@@ -251,7 +251,7 @@ chromewm.background.prototype.showWsTransition_ = function(newWorkspace) {
   });
 
   chrome.browserAction.setIcon({
-    path: "icon-38-" + newWorkspace + ".png"
+    'path': "icon-38-" + newWorkspace + ".png"
   });
 }
 
@@ -287,26 +287,27 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
   var newWindowHash = goog.string.hashCode('1' + 'chrome://newtab/');
 
   goog.array.forEach(this.windows_, (thisWindow_,i,a) => {
-    if (thisWindow_.workspace == this.currentWorkspace_) {
-      if (thisWindow_.tabs == newWindowHash) {
+    if (thisWindow_['ws'] == this.currentWorkspace_) {
+      if (thisWindow_['tabs'] == newWindowHash) {
         DEBUG_WS && console.log('REMOVING:', thisWindow_);
-        chrome.windows.remove(thisWindow_.id);
+        chrome.windows.remove(thisWindow_['id']);
       } else {
         DEBUG_WS && console.log('HIDING:', thisWindow_);
-        chrome.windows.update(thisWindow_.id, {state: 'minimized'});
+        chrome.windows.update(thisWindow_['id'], {'state': 'minimized'});
       }
-    } else if (thisWindow_.workspace == newWorkspace) {
+    } else if (thisWindow_['ws'] == newWorkspace) {
       DEBUG_WS && console.log('SHOWING:', thisWindow_);
-      chrome.windows.update(thisWindow_.id, {focused: true});
-      if (thisWindow_.focused) {
-        windowIdInFocus = thisWindow_.id;
+      chrome.windows.update(thisWindow_['id'], {'focused': true});
+      if (thisWindow_['focused']) {
+        windowIdInFocus = thisWindow_['id'];
       }
     }
   });
+
   if (typeof windowIdInFocus === 'undefined') {
-    chrome.windows.create({url: "chrome://newtab/", state: 'maximized'});
+    chrome.windows.create({'url': "chrome://newtab/", 'state': 'maximized'});
   } else {
-    chrome.windows.update(windowIdInFocus, {focused: true});
+    chrome.windows.update(windowIdInFocus, {'focused': true});
   }
   this.currentWorkspace_ = newWorkspace;
   this.showWsTransition_(newWorkspace);
@@ -327,50 +328,53 @@ chromewm.background.prototype.tileWindow_ = function(movement) {
 
   var newSize = {};
   chrome.windows.getLastFocused((window_) => {
-    this.getDisplayWorkArea_(window_.id).then((workArea) => {
+    this.getDisplayWorkArea_(window_['id']).then((workArea) => {
       var tileSize = {
-        height: Math.round(workArea.height/2),
-        width: Math.round(workArea.width/2)
+        height: Math.round(workArea['height']/2),
+        width: Math.round(workArea['width']/2)
       };
       var workAreaCenter = {
-        h: workArea.left + tileSize.width,
-        v: workArea.top + tileSize.height
+        h: workArea['left'] + tileSize.width,
+        v: workArea['top'] + tileSize.height
       };
       switch(movement) {
         case 'tile-left':
-          newSize.left = workArea.left;
-          if (window_.left == workAreaCenter.h && window_.width == tileSize.width) {
-            newSize.width = workArea.width;
+          newSize['left'] = workArea['left'];
+          if (window_['left'] == workAreaCenter.h &&
+              window_['width'] == tileSize.width) {
+            newSize['width'] = workArea['width'];
           } else {
-            newSize.width = tileSize.width;
+            newSize['width'] = tileSize.width;
           }
           break;
         case 'tile-right':
-          if (window_.left == workArea.left && window_.width == tileSize.width) {
-            newSize.width = workArea.width;
+          if (window_['left'] == workArea['left'] &&
+              window_['width'] == tileSize.width) {
+            newSize['width'] = workArea['width'];
           } else {
-            newSize.left = workAreaCenter.h;
-            newSize.width = tileSize.width;
+            newSize['left'] = workAreaCenter.h;
+            newSize['width'] = tileSize.width;
           }
           break;
         case 'tile-up':
-          newSize.top = workArea.top;
-          if (window_.height == tileSize.height) {
-            if (window_.top == workArea.top) {
-              newSize = {state: 'maximized'};
-            } else if (window_.top == workAreaCenter.v) {
-            newSize.height = workArea.height;
+          newSize['top'] = workArea['top'];
+          if (window_['height'] == tileSize.height) {
+            if (window_['top'] == workArea['top']) {
+              newSize = {'state': 'maximized'};
+            } else if (window_['top'] == workAreaCenter.v) {
+            newSize['height'] = workArea['height'];
             }
           } else {
-            newSize.height = tileSize.height;
+            newSize['height'] = tileSize.height;
           }
           break;
         case 'tile-down':
-          if (window_.top == workArea.top && window_.height == tileSize.height) {
-            newSize.height = workArea.height;
+          if (window_['top'] == workArea['top'] &&
+              window_['height'] == tileSize.height) {
+            newSize['height'] = workArea['height'];
           } else {
-            newSize.height = tileSize.height;
-            newSize.top = workAreaCenter.v;
+            newSize['height'] = tileSize.height;
+            newSize['top'] = workAreaCenter.v;
           }
           break;
         default:
@@ -379,10 +383,10 @@ chromewm.background.prototype.tileWindow_ = function(movement) {
           return;
       };
 
-      if (window_.state == 'maximized') {
-        chrome.windows.update(window_.id, {state: 'normal'});
+      if (window_['state'] == 'maximized') {
+        chrome.windows.update(window_['id'], {'state': 'normal'});
       }
-      chrome.windows.update(window_.id, newSize);
+      chrome.windows.update(window_['id'], newSize);
     });
   });
 }
@@ -400,11 +404,13 @@ chromewm.background.prototype.getDisplayWorkArea_ = function(windowId) {
     chrome.system.display.getInfo( (displays) => {
       chrome.windows.get(windowId, (window_) => {
         displayInFocus = goog.array.find(displays, (display, i, a) => {
-          return (window_.left < (display.workArea.left+display.workArea.width))
-            && (window_.top < (display.workArea.top + display.workArea.height))
+          return (window_['left'] <
+              (display['workArea']['left'] + display['workArea']['width'])) &&
+              (window_['top'] <
+              (display['workArea']['top'] + display['workArea']['height']))
         });
         if (goog.object.containsKey(displayInFocus, 'workArea')) {
-          resolve(displayInFocus.workArea)
+          resolve(displayInFocus['workArea'])
         } else {
           reject(Error("Failed to getDisplayWorkArea_"));
         }

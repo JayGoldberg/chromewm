@@ -9,7 +9,7 @@
 OUTPUT_PATH="bin"
 JS_CLOSURE_COMPILER_PATH="../third_party/bin/closure-compiler.jar"
 JS_CLOSURE_LIBRARY_PATH="../third_party/closure-library"
-JS_COMPILER_LEVEL="SIMPLE"
+JS_COMPILER_LEVEL="ADVANCED"
   # SIMPLE: Makes debugging Errors easier as variables keep their names
   # ADVANCED: Switch to ADVANCED during final builds
 

@@ -45,7 +45,7 @@ chromewm.options.prototype.Init = function() {
       goog.dom.getElement('confCommands'),
       goog.events.EventType.CLICK,
       () => {
-        chrome.tabs.create({url: "chrome://extensions/configureCommands"});}
+        chrome.tabs.create({'url': "chrome://extensions/configureCommands"});}
   );
 }
 
@@ -54,7 +54,7 @@ chromewm.options.prototype.Init = function() {
  * @private
  */
 chromewm.options.prototype.updateWorkspaceQty_ = function() {
-  this.workspaceQty_.innerHTML = this.workspaceQtyRange_.value;
+  this.workspaceQty_['innerHTML'] = this.workspaceQtyRange_['value'];
 }
 
 /**
@@ -62,7 +62,7 @@ chromewm.options.prototype.updateWorkspaceQty_ = function() {
  * @private
  */
 chromewm.options.prototype.Save_ = function() {
-  this.storage_.set('workspaceQty_', this.workspaceQtyRange_.value);
+  this.storage_.set('workspaceQty_', this.workspaceQtyRange_['value']);
 }
 
 
@@ -71,8 +71,8 @@ chromewm.options.prototype.Save_ = function() {
  * @private
  */
 chromewm.options.prototype.Load_ = function() {
-  this.workspaceQtyRange_.value = this.storage_.get('workspaceQty_') || 4;
-  this.workspaceQty_.innerHTML = this.workspaceQtyRange_.value;
+  this.workspaceQtyRange_['value'] = this.storage_.get('workspaceQty_') || 4;
+  this.workspaceQty_['innerHTML'] = this.workspaceQtyRange_['value'];
 }
 
 

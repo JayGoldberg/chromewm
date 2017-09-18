@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Chrome Windows Manager",
   "description": "This extension allows to tile Chrome windows and emulates workspaces",
-  "version": "0.6",
+  "version": "0.8",
   "icons":{
     "16": "icon-16.png",
     "48": "icon-48.png",
@@ -11,7 +11,7 @@
   "browser_action": {
     "default_title": "Chrome Windows Manager",
     "default_icon": {
-      "38": "icon-38.png"
+      "38": "icon-38-1.png"
     },
     "default_popup": "options.html"
   },
