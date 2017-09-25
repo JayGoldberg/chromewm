@@ -1,7 +1,7 @@
 /**
  * @fileoverview Wrapper for IndexedDB using Promises
  * work in progress.
- * @author edu
+ * @author EduCampi
  */
  // TODO(): addStore function
  // TODO(): getDB without specifying version, and create if needed.
@@ -18,8 +18,8 @@ goog.require('goog.object');
  * @constructor @export
  */
 edu.indxDB = function() {
-  /** @private {goog.db.IndexedDb} db_ */
-  this.db_;
+  /** @type {goog.db.IndexedDb} db */
+  this.db;
   /** @private {string} defaultObjStore_ */
   this.defaultObjStore_;
 }
@@ -33,7 +33,7 @@ edu.indxDB = function() {
  * @param {!string} objStores.name
  * @param {string=} objStores.keyPath
  * @param {boolean=} objStores.autoIncrement
- * @return {Promise}
+ * @return {!Promise}
  */
 edu.indxDB.prototype.getDB = function(name, version, objStores) {
   var stores_ = objStores || [];
@@ -46,7 +46,7 @@ edu.indxDB.prototype.getDB = function(name, version, objStores) {
           });
 
           try {
-            db_.createObjectStore(objStore_.name, options_);
+            db_.createObjectStore(objStore_['name'], options_);
           }
           catch(err) {
             reject(err);
@@ -58,8 +58,8 @@ edu.indxDB.prototype.getDB = function(name, version, objStores) {
         reject(vChgEv_);
       })
       .addCallback((val_) => {
-        this.db_ = val_;
-        this.defaultObjStore_ = objStores[0].name;
+        this.db = val_;
+        this.defaultObjStore_ = objStores[0]['name'];
         resolve();
     });
   });
@@ -70,13 +70,13 @@ edu.indxDB.prototype.getDB = function(name, version, objStores) {
  * @desc gets the value for the provided key in the specified Store
  * @param {!(number|string)} key
  * @param {string=} store
- * @return {Promise}
+ * @return {!Promise}
  */
 edu.indxDB.prototype.getByKey = function(key, store) {
   var store_ = store || this.defaultObjStore_;
   return new Promise((resolve, reject) => {
     try {
-      var tx_ = this.db_.createTransaction([store_],
+      var tx_ = this.db.createTransaction([store_],
           goog.db.Transaction.TransactionMode.READ_ONLY);
       var objStore_ = tx_.objectStore(store_);
       var results_ = objStore_.get(key);
@@ -93,18 +93,21 @@ edu.indxDB.prototype.getByKey = function(key, store) {
 /**
  * @desc Gets all elements in the specified Store
  * @param {string=} store
- * @return {Promise}
+ * @return {!Promise}
  */
 edu.indxDB.prototype.getAllByStore = function(store) {
   var store_ = store || this.defaultObjStore_;
   return new Promise((resolve, reject) => {
     try {
-      var tx_ = this.db_.createTransaction([store_],
+      var tx_ = this.db.createTransaction([store_],
           goog.db.Transaction.TransactionMode.READ_ONLY);
       var objStore_ = tx_.objectStore(store_);
-      var results_ = objStore_.getAll();
-      results_.addErrback(reject);
-      results_.addCallback(resolve);
+      var elements_ = objStore_.getAll();
+      elements_.addErrback(reject);
+      elements_.addCallback((results) => {
+        tx_.dispose();
+        resolve(results);
+      });
     }
     catch(err) {
       reject(err)
@@ -117,13 +120,13 @@ edu.indxDB.prototype.getAllByStore = function(store) {
  * @desc Adds elements to the specified Store
  * @param {!Array<Object>} objsToAdd - Array of objects to add
  * @param {string=} store
- * @return {Promise}
+ * @return {!Promise}
  */
 edu.indxDB.prototype.addToStore = function(objsToAdd, store) {
   var store_ = store || this.defaultObjStore_;
   return new Promise((resolve, reject) => {
     try {
-      var tx_ = this.db_.createTransaction([store_],
+      var tx_ = this.db.createTransaction([store_],
           goog.db.Transaction.TransactionMode.READ_WRITE);
       var objStore_ = tx_.objectStore(store_);
       goog.array.forEach(objsToAdd, (obj_, i_, a_) => {
@@ -144,13 +147,13 @@ edu.indxDB.prototype.addToStore = function(objsToAdd, store) {
  * @desc Removes an element from the store by its Key
  * @param {!Array<(number|string)>} keys - Array of Keys to remove
  * @param {string=} store
- * @return {Promise}
+ * @return {!Promise}
  */
 edu.indxDB.prototype.delByKey = function(keys, store) {
   var store_ = store || this.defaultObjStore_;
   return new Promise((resolve, reject) => {
     try {
-      var tx_ = this.db_.createTransaction([store_],
+      var tx_ = this.db.createTransaction([store_],
           goog.db.Transaction.TransactionMode.READ_WRITE);
       var objStore_ = tx_.objectStore(store_);
       // var results_;
@@ -173,12 +176,12 @@ edu.indxDB.prototype.delByKey = function(keys, store) {
 /**
  * @desc Removes all elements from a Store
  * @param {string} store - Must be specified
- * @return {Promise}
+ * @return {!Promise}
  */
 edu.indxDB.prototype.delAllByStore = function(store) {
   return new Promise((resolve, reject) => {
     try {
-      var tx_ = this.db_.createTransaction([store],
+      var tx_ = this.db.createTransaction([store],
           goog.db.Transaction.TransactionMode.READ_WRITE);
       var objStore_ = tx_.objectStore(store);
       var results_ = objStore_.clear();
@@ -196,14 +199,14 @@ edu.indxDB.prototype.delAllByStore = function(store) {
  * @desc Removes a store from the DB
  * @param {string} store - Must be specified
  * @param {string=} newDefaultStore - If removing the defaultStore
- * @return {Promise}
+ * @return {!Promise}
  */
 edu.indxDB.prototype.delStore = function(store, newDefaultStore) {
   return new Promise((resolve, reject) => {
-    goog.db.openDatabase(this.db_.getName(), this.db_.getVersion()+1,
+    goog.db.openDatabase(this.db.getName(), this.db.getVersion()+1,
       (vChgEv_, db_, tx_) => {
         try {
-          this.db_.deleteObjectStore(store);
+          this.db.deleteObjectStore(store);
         }
         catch(err) {
           reject(err);
@@ -213,7 +216,7 @@ edu.indxDB.prototype.delStore = function(store, newDefaultStore) {
         reject(vChgEv_);
       })
       .addCallback((val_) => {
-        this.db_ = val_;
+        this.db = val_;
         if (store == this.defaultObjStore_) {
           this.defaultObjStore_ = newDefaultStore || '';
         }
@@ -236,7 +239,7 @@ edu.indxDB.prototype.delDB = function(name) {
         reject(vChgEv_);
       })
       .addCallback(() => {
-        this.db_.dispose();
+        this.db.dispose();
         this.defaultObjStore_ = '';
         resolve();
     });

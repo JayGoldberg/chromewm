@@ -15,6 +15,7 @@ JS_COMPILER_LEVEL="ADVANCED"
 
 # Add all necessary externs
 JS_EXTERNS="\
+../third_party/closure-compiler/contrib/externs/chrome.js \
 ../third_party/closure-compiler/contrib/externs/chrome_extensions.js \
 "
 

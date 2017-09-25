@@ -49,6 +49,7 @@ chromewm.options.prototype.Init = function() {
   );
 }
 
+
 /**
  * @desc Updateds workspaceQty_ number
  * @private
@@ -56,6 +57,7 @@ chromewm.options.prototype.Init = function() {
 chromewm.options.prototype.updateWorkspaceQty_ = function() {
   this.workspaceQty_['innerHTML'] = this.workspaceQtyRange_['value'];
 }
+
 
 /**
  * @desc Saves options

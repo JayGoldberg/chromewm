@@ -1,1 +1,5 @@
 bin
+bazel*
+.bazelrc
+WORKSPACE
+BUILD
