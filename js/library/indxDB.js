@@ -65,6 +65,25 @@ edu.indxDB.prototype.getDB = function(name, version, objStores) {
   });
 }
 
+/**
+ * @desc Runs Transaction
+ * @param {string} store - The store where to run the transaction
+ * @param {Function} fn
+ */
+edu.indxDB.prototype.doTx_ = async function (store, fn) {
+  var store_ = store || this.defaultObjStore_;
+
+  var tx_ = this.db.createTransaction([store_],
+      goog.db.Transaction.TransactionMode.READ_ONLY);
+
+  await fn(tx_.objectStore(store_));
+
+  // tx_.dispose();
+  return;
+}
+
+
+
 
 /**
  * @desc gets the value for the provided key in the specified Store

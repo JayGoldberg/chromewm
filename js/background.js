@@ -3,9 +3,9 @@
  * @author EduCampi
  */
 
-// TODO(): 1) Cleanup and improve code quality
+// TODO(): 1) Cleanup and improve code quality. (Function names)
 // TODO(): 1a) Can assign objects per reference, see what can be improved.
-// TODO(): 1b) Implement Promises properly, resolve and reject
+// TODO(): 1b) Implement Promises properly(or async await), resolve and reject
 // TODO(): 1c) What can be done async ?
 // TODO(): 2) IndexedDB not working for crashes
 
@@ -160,58 +160,6 @@ chromewm.background.prototype.setListeners_ = function() {
 
 
 /**
- * @desc Handles the event when a window recieves focus
- * @param {!number} windowId
- * @private
- */
-chromewm.background.prototype.handleWindowFocusChange_ = function(windowId) {
-  DEBUG_CALLS && console.log('CALL: handleWindowFocusChange_(',windowId,')');
-
-  goog.array.forEach(this.windows_, (thisWindow_, i, a) => {
-    var shouldBeFocused = (thisWindow_['id'] == windowId);
-
-    if (thisWindow_['ws'] == this.currentWorkspace_) { // If happens in the active workspace
-
-      if ((shouldBeFocused && !thisWindow_['focused']) || // If it's the one recieving focus and didn't have it before.
-          (!shouldBeFocused && thisWindow_['focused'])) { // If it's not the one recieving focus and did have it before
-
-        console.log('Cambio de focus en el mismo workspace:', thisWindow_);
-
-        thisWindow_['focused'] = shouldBeFocused;
-        this.db_.addToStore([thisWindow_]);
-
-      }
-
-    } else if (shouldBeFocused) { // If it's the one recieving focus, but was in another workspace.
-
-      var prevWS = thisWindow_['ws'];
-      console.log('Moving Window ID:', thisWindow_['id'], 'from ws:',
-          prevWS, 'to Ws', this.currentWorkspace_);
-
-      thisWindow_['ws'] = this.currentWorkspace_;
-      thisWindow_['focused'] = true;
-      this.db_.addToStore([thisWindow_]);
-
-      goog.array.some(this.windows_, (thisWin_, i, a) => {
-        if (thisWin_['ws'] == prevWS) {
-          console.log('Found thisWin_ to give focus', thisWin_);
-          thisWin_['focused'] = true;
-          this.db_.addToStore([thisWin_]);
-          // this.windows_[i]['focused'] = true;
-          // this.db_.addToStore([this.windows_[i]]);
-
-          return true;
-        } else {
-          return false;
-        }
-      });
-    }
-  });
-}
-
-
-
-/**
  * @desc Waits Chrome to reload all windows after a restart
  * @private
  */
@@ -239,6 +187,42 @@ chromewm.background.prototype.waitForWindows_ = function() {
   });
 }
 
+
+/**
+ * @desc Handles the event when a window recieves focus
+ * @param {!number} windowId
+ * @private
+ */
+chromewm.background.prototype.handleWindowFocusChange_ = function(windowId) {
+  DEBUG_CALLS && console.log('CALL: handleWindowFocusChange_(',windowId,')');
+
+  goog.array.forEach(this.windows_, (thisWindow_, i, a) => {
+    var shouldBeFocused = (thisWindow_['id'] == windowId);
+
+    if ((thisWindow_['ws'] == this.currentWorkspace_) &&
+        (shouldBeFocused != thisWindow_['focused'])) {
+      thisWindow_['focused'] = shouldBeFocused;
+      this.db_.addToStore([thisWindow_]);
+
+    } else if (shouldBeFocused) {
+
+      var prevWS = thisWindow_['ws'];
+      thisWindow_['ws'] = this.currentWorkspace_;
+      thisWindow_['focused'] = true;
+      this.db_.addToStore([thisWindow_]);
+
+      goog.array.some(this.windows_, (thisWin_, i, a) => {
+        if (thisWin_['ws'] == prevWS) {
+          thisWin_['focused'] = true;
+          this.db_.addToStore([thisWin_]);
+          return true;
+        } else {
+          return false;
+        }
+      });
+    }
+  });
+}
 
 
 /**
@@ -297,7 +281,7 @@ chromewm.background.prototype.updateWindow_ = function(windowId) {
  * @private
  * @param {!number} newWorkspace
  */
-chromewm.background.prototype.showWsTransition_ = function(newWorkspace) {
+chromewm.background.prototype.showWsTransition_ = async function(newWorkspace) {
   DEBUG_CALLS && console.log('CALL: showWsTransition_(',newWorkspace,')');
 
   chrome.notifications.create("workspaceChange", {
@@ -309,8 +293,7 @@ chromewm.background.prototype.showWsTransition_ = function(newWorkspace) {
       },
       (notificationId_) => {
         setTimeout(() => {
-          // chrome.notifications.clear(notificationId_);}, 2000);
-          chrome.notifications.clear(notificationId_);}, 4000);
+          chrome.notifications.clear(notificationId_);}, 2000);
   });
 
   chrome.browserAction.setIcon({
@@ -334,26 +317,22 @@ chromewm.background.prototype.changeWorkspace_ = function(command) {
   }
 }
 
-// testFunc = function(windowId) {
-//   this.handleWindowFocusChange_(windowId);
-// }
+
 
 /**
  * @desc Shows the specified workspace
  * @private
  * @param {!number} newWorkspace
  */
- //TODO(): Need to suspend chrome.windows.onFocusChanged while switching.
 chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
   DEBUG_CALLS && console.log('CALL: showWorkspace_(',newWorkspace,')');
-
-  console.log('switchingWS to true');
 
   this.switchingWS_ = true;
 
   if (!(newWorkspace >= 1 && newWorkspace <= this.maxWorkspaces_)) {
     return;
   }
+
   var windowIdInFocus;
   var newWindowHash = goog.string.hashCode('1' + 'chrome://newtab/');
 
@@ -386,43 +365,38 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
   // verify
   var timer = setInterval( async () => {
     console.log('Checking if windows are updated');
-    if (await this.didWindowsUpdate_()) {
+    if (await this.areWindowsUpdated_()) {
       console.log('They are updated!');
       clearInterval(timer);
       this.switchingWS_ = false;
     };
   }, 500);
-
 }
 
 
-chromewm.background.prototype.didWindowsUpdate_ = function() {
+/**
+ * @desc Checks if all windows finished updating after the workspace change.
+ * @returns {!Promise}
+ */
+chromewm.background.prototype.areWindowsUpdated_ = function() {
   return new Promise((resolve) => {
-  chrome.windows.getAll((windows_) => {
-    resolve (goog.array.every(windows_, (window_, i, a) => {
-      return (goog.array.some(this.windows_, (thisWindow_, i_, a_) => {
-        if(thisWindow_['id'] == window_['id']) {
-          console.log('checking window id', thisWindow_['id']);
-          if (thisWindow_['ws'] != this.currentWorkspace_) {
-            if (!window_['focused']) {
-              console.log('meets condition 1');
-              return true;
-            }
-          }
-          if (thisWindow_['ws'] == this.currentWorkspace_) {
-            if (window_['state'] != 'minimized') {
-              console.log('meets condition 2');
-              return true;
-            }
+    chrome.windows.getAll((windows_) => {
+      resolve (goog.array.every(windows_, (window_, i, a) => {
+        return goog.array.some(this.windows_, (thisWindow_, i_, a_) => {
+          if (thisWindow_['id'] == window_['id']) {
+            return ((thisWindow_['ws'] != this.currentWorkspace_)
+                    && (!window_['focused']))
+                || ((thisWindow_['ws'] == this.currentWorkspace_)
+                    && (window_['state'] != 'minimized'));
           }
           return false;
-        }
-        return false;
+        });
       }));
-    }));
+    });
   });
-});
 }
+
+
 
 ////////////////////////////////////////////
 //          Tiling Windows Logic          //
@@ -433,7 +407,7 @@ chromewm.background.prototype.didWindowsUpdate_ = function() {
  * @private
  * @param {!string} movement
  */
-chromewm.background.prototype.tileWindow_ = function(movement) {
+chromewm.background.prototype.tileWindow_ = async function(movement) {
   DEBUG_CALLS && console.log('CALL: tileWindow_(',movement,')');
 
   var newSize = {};
@@ -517,8 +491,8 @@ chromewm.background.prototype.getDisplayWorkArea_ = function(windowId) {
       chrome.windows.get(windowId, (window_) => {
         displayInFocus = goog.array.find(displays, (display, i, a) => {
           return (window_['left'] <
-              (display['workArea']['left'] + display['workArea']['width'])) &&
-              (window_['top'] <
+              (display['workArea']['left'] + display['workArea']['width']))
+              && (window_['top'] <
               (display['workArea']['top'] + display['workArea']['height']))
         });
         if (goog.object.containsKey(displayInFocus, 'workArea')) {
@@ -547,6 +521,7 @@ chromewm.background.prototype.commandHandler_ = function(command) {
     this.tileWindow_(command);
     return;
   }
+
   if (goog.string.startsWith(command, 'ws-')) {
     this.changeWorkspace_(command);
     return;
