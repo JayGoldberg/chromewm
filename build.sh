@@ -101,6 +101,11 @@ while read TARGET; do
   [ ! "$INPUT_FILE" -nt "$OUTPUT_PATH/$FILENAME" ] && continue
 
   case $FILENAME in
+    # Temporary fix until the build tools are replaced
+    material.min.js)
+      echo -e "$(date +%H:%M:%S) ${GREEN}Coping${NC} $INPUT_FILE"
+      cp $INPUT_FILE $OUTPUT_PATH/$FILENAME
+      ;;
     # Compile if it's a JavaScript file
     *.js)
       echo -e "$(date +%H:%M:%S) ${GREEN}Compiling${NC} $INPUT_FILE"
