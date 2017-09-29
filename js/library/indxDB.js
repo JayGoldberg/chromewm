@@ -143,6 +143,7 @@ edu.indxDB.prototype.getAllByStore = function(store) {
  */
 edu.indxDB.prototype.addToStore = function(objsToAdd, store) {
   var store_ = store || this.defaultObjStore_;
+  console.log('addToStore', objsToAdd);
   return new Promise((resolve, reject) => {
     try {
       var tx_ = this.db.createTransaction([store_],
