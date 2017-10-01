@@ -23,9 +23,9 @@ var DEBUG_WS = false;   /** Logs workspace changes. */
 //            Initialization              //
 ////////////////////////////////////////////
 
-/** @type {chromewm.background} background */
-var background = new chromewm.background();
+var background = {};
 goog.events.listenOnce(window, goog.events.EventType.LOAD, () => {
+  background = new chromewm.background();
   background.Init();
 });
 
@@ -38,7 +38,7 @@ chromewm.background = function() {
   this.currentWorkspace_ = 0;
   /** @private {edu.indxDB} db_ - Connection to the IndexedDB */
   this.db_ = new edu.indxDB();
-  /** @private {!number} maxWorkspaces_ - As defined by the options page*/
+  /** @private {!number} maxWorkspaces_ - As defined by the options page */
   this.maxWorkspaces_ = 4;
   /** @private {Object} storage_ - Local Storage for the extension options */
   this.storage_ = new goog.storage.mechanism.HTML5LocalStorage();

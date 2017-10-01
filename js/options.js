@@ -8,16 +8,29 @@ goog.require('goog.dom');
 goog.require('goog.events');
 goog.require('goog.storage.mechanism.HTML5LocalStorage');
 
+/** @type {Object} optionsPage */
+var optionsPage = {};
+
+goog.events.listenOnce(
+  goog.dom.getDocument(),
+  goog.events.EventType.DOMCONTENTLOADED,
+  () => {
+    optionsPage = new chromewm.options();
+    optionsPage.Init();
+  }
+);
+
+
 /**
- * @desc Defines Options Object
+ * @desc Contructor for the Options Object
  * @constructor @export
  */
 chromewm.options = function() {
-  /** @private {Element} workspaceQty_ */
+  /** @private {Element} workspaceQty_ - Text DOM for Quantity of Workspaces */
   this.workspaceQty_ = goog.dom.getElement('workspaceQty');
-  /** @private {Element} workspaceQtyRange_ */
+  /** @private {Element} workspaceQtyRange_ - Slider DOM*/
   this.workspaceQtyRange_ = goog.dom.getElement('workspaceQtyRange');
-  /** @private {Object} storage_ */
+  /** @private {Object} storage_ - Local Storage object */
   this.storage_= new goog.storage.mechanism.HTML5LocalStorage();
 }
 
@@ -51,7 +64,7 @@ chromewm.options.prototype.Init = function() {
 
 
 /**
- * @desc Updateds workspaceQty_ number
+ * @desc Updates workspaceQty_ number when slider changes.
  * @private
  */
 chromewm.options.prototype.updateWorkspaceQty_ = function() {
@@ -60,7 +73,7 @@ chromewm.options.prototype.updateWorkspaceQty_ = function() {
 
 
 /**
- * @desc Saves options
+ * @desc Saves options to local storage
  * @private
  */
 chromewm.options.prototype.Save_ = function() {
@@ -69,26 +82,10 @@ chromewm.options.prototype.Save_ = function() {
 
 
 /**
- * @desc Loads options
+ * @desc Loads options from localstorage
  * @private
  */
 chromewm.options.prototype.Load_ = function() {
   this.workspaceQtyRange_['value'] = this.storage_.get('workspaceQty_') || 4;
   this.workspaceQty_['innerHTML'] = this.workspaceQtyRange_['value'];
 }
-
-
-/**
- * Waits for the page to load and instantiates the object
- */
-/** @type {Object} optionsPage */
-var optionsPage = {};
-
-goog.events.listen(
-  goog.dom.getDocument(),
-  goog.events.EventType.DOMCONTENTLOADED,
-  () => {
-    optionsPage = new chromewm.options();
-    optionsPage.Init();
-  }
-);
