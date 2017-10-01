@@ -369,7 +369,6 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
         default:
           return;
       };
-
       if (window_['state'] == 'maximized') {
         chrome.windows.update(window_['id'], {'state': 'normal'});
       }
@@ -444,7 +443,11 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
         DEBUG_WS && console.log('WS: HIDING:', thisWindow_);
         chrome.windows.update(thisWindow_['id'], {'state': 'minimized'});
       }
-    } else if (thisWindow_['ws'] == newWorkspace) {
+    }
+  });
+
+  goog.array.forEach(this.windows_, (thisWindow_,i,a) => {
+    if (thisWindow_['ws'] == newWorkspace) {
       DEBUG_WS && console.log('WS: SHOWING:', thisWindow_);
       chrome.windows.update(thisWindow_['id'], {'focused': true});
       if (thisWindow_['focused']) {

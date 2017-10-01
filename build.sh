@@ -122,4 +122,6 @@ while read TARGET; do
   esac
 done
 done < BUILD_TARGETS
+echo -e "$(date +%H:%M:%S) ${GREEN}Creating ZIP file${NC}"
+zip -q -j $OUTPUT_PATH/package.zip $OUTPUT_PATH/* -x *.zip
 echo -e "$(date +%H:%M:%S) ${GREEN}Build Completed!${NC}"
