@@ -26,9 +26,7 @@ It creates a unique hash number for each window based on the amount of tabs open
 2. Click on the extension icon on the toolbar.
 3. Select the amount of workspaces by using the slider.
 4. Click on the 'Configure shortcuts' button.
-5. Configure the keyboard shortcuts to switch workspaces.
-  - I recommend using `Alt+X` and `Alt+Z`.
-  - Set the workspace shortcuts scope to *global*, so you can switch them without Chrome™ being in focus.
+5. Configure the keyboard shortcuts to switch workspaces. (I recommend using `Alt+X` and `Alt+Z`)
 
 ### Normal Use
 #### Tile Windows
