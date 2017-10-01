@@ -1,5 +1,7 @@
-# Chrome Windows Manager
-This Chrome browser extension provides two windows management functions:
+# Windows Manager for Google Chrome
+**NOTE:** Chrome™ is a trademark of Google Inc. Use of this trademark is subject to Google Permissions.  
+
+This Chrome™ browser extension provides two windows management functions:
 - Tiling windows.
 - Emulating workspaces
 
@@ -20,17 +22,17 @@ It creates a unique hash number for each window based on the amount of tabs open
 
 ## Use Guide
 ### Install and Configure
-1. Install from the [Chrome Webstore](https://chrome.google.com/webstore/detail/chrome-windows-manager/gophpkegccafhjahoijdembdkbjpiflb)
+1. Install from the [Chrome™ Webstore](https://chrome.google.com/webstore/detail/chrome-windows-manager/gophpkegccafhjahoijdembdkbjpiflb)
 2. Click on the extension icon on the toolbar.
 3. Select the amount of workspaces by using the slider.
 4. Click on the 'Configure shortcuts' button.
 5. Configure the keyboard shortcuts to switch workspaces.
   - I recommend using `Alt+X` and `Alt+Z`.
-  - Set the workspace shortcuts scope to *global*, so you can switch them without Chrome being in focus.
+  - Set the workspace shortcuts scope to *global*, so you can switch them without Chrome™ being in focus.
 
 ### Normal Use
 #### Tile Windows
-  With the Chrome Browser window in focus, use the configured keyboard shortcuts to tile it to different positions.
+  With the Chrome™ Browser window in focus, use the configured keyboard shortcuts to tile it to different positions.
 #### Switch Workspaces:
   1. Press the *Next Workspace* or *Previous Workspace* keyboard shortcut.
   2. A notification will be displayed indicating which workspace is now active.  
@@ -45,8 +47,8 @@ It creates a unique hash number for each window based on the amount of tabs open
 - Does not recover the workspaces state if the browser crashes due to a power
 loss or the process being terminated. (See [issue #1](https://github.com/EduCampi/chromewm/issues/1))
 - Cannot set all shortcuts by default do to an imposed limit of 4 by Chrome.
-- It's necessary to open a new Chrome window when switching to an empty workspace,
-in order for Chrome to be in focus and able to listen for keyboard shortcuts.
+- It's necessary to open a new Chrome™ window when switching to an empty workspace,
+in order for Chrome™ to be in focus and able to listen for keyboard shortcuts.
 (The window will be removed if it's not used)
 
 
