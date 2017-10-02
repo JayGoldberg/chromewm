@@ -30,11 +30,14 @@ It creates a unique hash number for each window based on the amount of tabs open
 
 ### Normal Use
 #### Tile Windows
-  With the Chrome™ Browser window in focus, use the configured keyboard shortcuts to tile it to different positions.
+  With the Chrome™ Browser window in focus, use the configured keyboard shortcuts to tile it to different positions.  
+  ![](https://github.com/EduCampi/chromewm/blob/master/docs/chromewm-tiling.gif)
+  
 #### Switch Workspaces:
   1. Press the *Next Workspace* or *Previous Workspace* keyboard shortcut.
   2. A notification will be displayed indicating which workspace is now active.  
-  NOTE: The extension icon will always display the active workspace.
+  NOTE: The extension icon will always display the active workspace.  
+  ![](https://github.com/EduCampi/chromewm/blob/master/docs/chromewm-workspaces.gif)
 
 #### Move a window to another workspace:
   1. Switch to the destination workspace.
