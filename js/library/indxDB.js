@@ -71,9 +71,13 @@ edu.indxDB.prototype.getDB = function(name, version, objStores) {
  * @param {!goog.db.Transaction.TransactionMode} mode - READ_ONLY or READ_WRITE
  * @param {string=} store - The store where to run the transaction
  * @returns {!Promise}
+ * @private
  */
 edu.indxDB.prototype.runTx_ = function(fn, mode, store) {
-  var store_ = store || this.defaultObjStore_;
+  var store_ = store;
+  if (typeof store === 'undefined') {
+    store_ = this.defaultObjStore_;
+  }
   return new Promise ((resolve, reject) => {
     var tx_ = this.db_.createTransaction([store_], mode);
     var result = fn(tx_.objectStore(store_));
@@ -114,11 +118,11 @@ edu.indxDB.prototype.getAllByStore = function(store) {
 
 
 /**
-  * @desc Adds elements to the specified store.
-  * @param {!Array<Object>} objsToAdd - Array of objects to add
-  * @param {string=} store - The store where to run the transaction
-  * @returns {!Promise}
-  */
+ * @desc Adds elements to the specified store.
+ * @param {!Array<Object>} objsToAdd - Array of objects to add
+ * @param {string=} store - The store where to run the transaction
+ * @returns {!Promise}
+ */
 edu.indxDB.prototype.addToStore = function(objsToAdd, store) {
   return this.runTx_(
       (objStore) => {
@@ -132,11 +136,11 @@ edu.indxDB.prototype.addToStore = function(objsToAdd, store) {
 
 
 /**
-  * @desc Removes elements from the store by their Keys.
-  * @param {!Array<(number|string)>} keys - Array of Keys to remove
-  * @param {string=} store - The store where to run the transaction
-  * @returns {!Promise}
-  */
+ * @desc Removes elements from the store by their Keys.
+ * @param {!Array<(number|string)>} keys - Array of Keys to remove
+ * @param {string=} store - The store where to run the transaction
+ * @returns {!Promise}
+ */
 edu.indxDB.prototype.delByKey = function(keys, store) {
   return this.runTx_(
       (objStore) => {

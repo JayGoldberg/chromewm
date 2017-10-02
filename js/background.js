@@ -29,6 +29,7 @@ goog.events.listenOnce(window, goog.events.EventType.LOAD, () => {
   background.Init();
 });
 
+
 /**
  * @desc Constructor for background object
  * @constructor @export
@@ -56,8 +57,10 @@ chromewm.background = function() {
 chromewm.background.prototype.Init = function() {
   DEBUG_CALLS && console.log('CALL: Init()');
 
-  this.maxWorkspaces_ = goog.string.parseInt(
-      this.storage_.get('workspaceQty_')) || 4;
+  var workspaceQty_ = this.storage_.get('workspaceQty_');
+  if (typeof workspaceQty_ !== 'undefined') {
+    this.maxWorkspaces_ = goog.string.parseInt(workspaceQty_);
+  }
 
   this.db_.getDB('chromewm', 1, [{'name': 'windows', 'keyPath': 'id'}])
   .then( () => {
@@ -65,33 +68,31 @@ chromewm.background.prototype.Init = function() {
     .then(savedWindows_ => {
       chrome.windows.getAll({'populate': true}, (windows_) => {
         goog.array.forEach(windows_, (window_, i, a) => {
-          var windowToSave_ = {};
           var tabs_ = goog.string.hashCode(
               window_['tabs'].length.toString() +
               goog.array.last(window_['tabs'])['url']);
 
-          if (!goog.array.some(savedWindows_, (sW_, sI, sA) => {
-              if (sW_['tabs'] == tabs_) {
-                windowToSave_ = {
-                  'focused': sW_['focused'],
-                  'id': window_['id'],
-                  'state': sW_['state'],
-                  'tabs': tabs_,
-                  'ws': sW_['ws']
-                };
-                return true;
-              } else {
-                return false;
-              }
-              })) {
-            windowToSave_ = {
-              'focused': window_['focused'],
-              'id': window_['id'],
-              'state': window_['state'],
-              'tabs': tabs_,
-              'ws': 1
-            };
+          var srcWindow = goog.array.find(savedWindows_, (sW_, i, a) => {
+              return sW_['tabs'] == tabs_;
+          });
+          if (!srcWindow) srcWindow = window_;
+
+          var windowToSave_ = {
+            'focused': srcWindow['focused'],
+            'height': srcWindow['height'],
+            'id': window_['id'],
+            'left': srcWindow['left'],
+            'state': window_['state'],
+            'tabs': tabs_,
+            'top': srcWindow['top'],
+            'width': srcWindow['width'],
+            'ws': 1
           }
+          if (typeof srcWindow['ws'] !== 'undefined') {
+            windowToSave_['ws'] = srcWindow['ws'];
+            windowToSave_['state'] = srcWindow['state'];
+          }
+
           this.windows_.push(windowToSave_);
         });
       this.db_.delAllByStore('windows');
@@ -287,15 +288,18 @@ chromewm.background.prototype.onTabChange_ = function(windowId) {
           return false;
         }
         })) {
-        var windowToSave = {
+        var windowToSave_ = {
             'focused': window_['focused'],
+            'height': window_['height'],
             'id': window_['id'],
-            'state': window_['state'],
+            'left': window_['left'],
             'tabs': tabs_,
+            'top': window_['top'],
+            'width': window_['width'],
             'ws': this.currentWorkspace_
         };
-        this.windows_.push(windowToSave);
-        this.db_.addToStore([windowToSave]);
+        this.windows_.push(windowToSave_);
+        this.db_.addToStore([windowToSave_]);
       }
     }
   });
@@ -314,7 +318,6 @@ chromewm.background.prototype.onTabChange_ = function(windowId) {
 chromewm.background.prototype.tileWindow_ = async function(movement) {
   DEBUG_CALLS && console.log('CALL: tileWindow_(',movement,')');
 
-  var newSize = {};
   chrome.windows.getLastFocused((window_) => {
     this.getDisplayWorkArea_(window_['id']).then((workArea) => {
       var tileSize = {
@@ -324,6 +327,12 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
       var workAreaCenter = {
         h: workArea['left'] + tileSize.width,
         v: workArea['top'] + tileSize.height
+      };
+      var newSize = {
+        'height': window_['height'],
+        'left': window_['left'],
+        'top': window_['top'],
+        'width': window_['width']
       };
 
       switch(movement) {
@@ -349,7 +358,7 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
           newSize['top'] = workArea['top'];
           if (window_['height'] == tileSize.height) {
             if (window_['top'] == workArea['top']) {
-              newSize = {'state': 'maximized'};
+              newSize['state'] = 'maximized';
             } else if (window_['top'] == workAreaCenter.v) {
             newSize['height'] = workArea['height'];
             }
@@ -369,10 +378,12 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
         default:
           return;
       };
+
       if (window_['state'] == 'maximized') {
         chrome.windows.update(window_['id'], {'state': 'normal'});
       }
       chrome.windows.update(window_['id'], newSize);
+      this.saveWindowSize_(window_['id']);
     })
     .catch(err => {
       console.log('ERROR: Unable to get Display work area', err);
@@ -411,6 +422,39 @@ chromewm.background.prototype.getDisplayWorkArea_ = function(windowId) {
 }
 
 
+/**
+ * @desc Updates the DB when a window changes size or position.
+ * @param {!number} windowId - ID of the window changing.
+ * @private
+ */
+chromewm.background.prototype.saveWindowSize_ = function(windowId) {
+  DEBUG_CALLS && console.log('CALL: saveWindowSize_(',windowId,')');
+
+  chrome.windows.get(windowId, (window_) => {
+    var thisWindow_ = goog.array.find(this.windows_, (thisWindow_, i, a) => {
+        return thisWindow_['id'] == windowId;
+    });
+
+    var windowSize = {
+        'height': window_['height'],
+        'left': window_['left'],
+        'top': window_['top'],
+        'width': window_['width']
+    };
+    if (window_['state'] != 'minimized') {
+      windowSize['state'] = window_['state'];
+    }
+
+    if (goog.object.some(windowSize, (val, key, obj) => {
+          return thisWindow_[key] != val;
+        })) {
+      goog.object.extend(thisWindow_, windowSize);
+      this.db_.addToStore([thisWindow_]);
+    }
+  });
+}
+
+
 ////////////////////////////////////////////
 //            Workspaces Logic            //
 ////////////////////////////////////////////
@@ -441,6 +485,7 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
         chrome.windows.remove(thisWindow_['id']);
       } else {
         DEBUG_WS && console.log('WS: HIDING:', thisWindow_);
+        this.saveWindowSize_(thisWindow_['id']);
         chrome.windows.update(thisWindow_['id'], {'state': 'minimized'});
       }
     }
@@ -450,6 +495,12 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
     if (thisWindow_['ws'] == newWorkspace) {
       DEBUG_WS && console.log('WS: SHOWING:', thisWindow_);
       chrome.windows.update(thisWindow_['id'], {'focused': true});
+      chrome.windows.update(thisWindow_['id'], {
+          'height': thisWindow_['height'],
+          'left': thisWindow_['left'],
+          'top': thisWindow_['top'],
+          'width': thisWindow_['width']
+      });
       if (thisWindow_['focused']) {
         windowIdInFocus = thisWindow_['id'];
       }
