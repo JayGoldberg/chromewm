@@ -271,7 +271,15 @@ chromewm.background.prototype.onTabChange_ = function(windowId) {
         return thisWindow_['id'] == windowId;
       });
       this.db_.delByKey([windowId]);
-      return;
+      if (!goog.array.some(this.windows_, (thisWindow_, i ,a) => {
+          return thisWindow_['ws'] == this.currentWorkspace_;
+          })) {
+        if (this.currentWorkspace_ > 1) {
+          this.showWorkspace_(this.currentWorkspace_ - 1);
+        } else if (this.windows_.length != 0) {
+          this.showWorkspace_(this.windows_[0]['ws']);
+        }
+      }
     } else {
       var tabs_ = goog.string.hashCode(
           window_['tabs'].length.toString() +
