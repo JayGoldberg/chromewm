@@ -301,6 +301,7 @@ chromewm.background.prototype.onTabChange_ = function(windowId) {
             'height': window_['height'],
             'id': window_['id'],
             'left': window_['left'],
+            'state': window_['state'],
             'tabs': tabs_,
             'top': window_['top'],
             'width': window_['width'],
@@ -446,12 +447,10 @@ chromewm.background.prototype.saveWindowSize_ = function(windowId) {
     var windowSize = {
         'height': window_['height'],
         'left': window_['left'],
+        'state': window_['state'],
         'top': window_['top'],
         'width': window_['width']
     };
-    if (window_['state'] != 'minimized') {
-      windowSize['state'] = window_['state'];
-    }
 
     if (goog.object.some(windowSize, (val, key, obj) => {
           return thisWindow_[key] != val;
@@ -481,7 +480,7 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
     return;
   }
 
-  var windowIdInFocus;
+  var focusedWindowId, minimizedWindowId;
   var newWindowHash = goog.string.hashCode('1' + 'chrome://newtab/');
 
   this.switchingWS_ = true;
@@ -501,24 +500,33 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
 
   goog.array.forEach(this.windows_, (thisWindow_,i,a) => {
     if (thisWindow_['ws'] == newWorkspace) {
-      DEBUG_WS && console.log('WS: SHOWING:', thisWindow_);
-      chrome.windows.update(thisWindow_['id'], {'focused': true});
-      chrome.windows.update(thisWindow_['id'], {
-          'height': thisWindow_['height'],
-          'left': thisWindow_['left'],
-          'top': thisWindow_['top'],
-          'width': thisWindow_['width']
-      });
       if (thisWindow_['focused']) {
-        windowIdInFocus = thisWindow_['id'];
+        focusedWindowId = thisWindow_['id'];
+      }
+      if (thisWindow_['state'] == 'minimized') {
+        minimizedWindowId = thisWindow_['id'];
+      }
+      if (thisWindow_['state'] != 'minimized') {
+        DEBUG_WS && console.log('WS: SHOWING:', thisWindow_);
+        chrome.windows.update(thisWindow_['id'], {'focused': true});
+        chrome.windows.update(thisWindow_['id'], {
+            'height': thisWindow_['height'],
+            'left': thisWindow_['left'],
+            'top': thisWindow_['top'],
+            'width': thisWindow_['width']
+        });
       }
     }
   });
 
-  if (typeof windowIdInFocus === 'undefined') {
-    chrome.windows.create({'url': "chrome://newtab/", 'state': 'maximized'});
+  if (typeof focusedWindowId === 'undefined') {
+    if (typeof minimizedWindowId === 'undefined') {
+      chrome.windows.create({'url': "chrome://newtab/", 'state': 'maximized'});
+    } else {
+      chrome.windows.update(minimizedWindowId, {'focused': true});
+    }
   } else {
-    chrome.windows.update(windowIdInFocus, {'focused': true});
+    chrome.windows.update(focusedWindowId, {'focused': true});
   }
   this.currentWorkspace_ = newWorkspace;
   this.showWsTransition_(newWorkspace);
