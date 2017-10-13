@@ -58,7 +58,7 @@ chromewm.background.prototype.Init = function() {
   DEBUG_CALLS && console.log('CALL: Init()');
 
   var workspaceQty_ = this.storage_.get('workspaceQty_');
-  if (typeof workspaceQty_ !== 'undefined') {
+  if (!goog.isNull(workspaceQty_)) {
     this.maxWorkspaces_ = goog.string.parseInt(workspaceQty_);
   }
 
@@ -271,8 +271,9 @@ chromewm.background.prototype.onTabChange_ = function(windowId) {
         return thisWindow_['id'] == windowId;
       });
       this.db_.delByKey([windowId]);
-      if (!goog.array.some(this.windows_, (thisWindow_, i ,a) => {
-          return thisWindow_['ws'] == this.currentWorkspace_;
+      if (!this.switchingWS_ &&
+          !goog.array.some(this.windows_, (thisWindow_, i ,a) => {
+              return thisWindow_['ws'] == this.currentWorkspace_;
           })) {
         if (this.currentWorkspace_ > 1) {
           this.showWorkspace_(this.currentWorkspace_ - 1);
@@ -578,10 +579,11 @@ chromewm.background.prototype.areWindowsUpdated_ = function() {
       resolve (goog.array.every(windows_, (window_, i, a) => {
         return goog.array.some(this.windows_, (thisWindow_, i_, a_) => {
           if (thisWindow_['id'] == window_['id']) {
-            return ((thisWindow_['ws'] != this.currentWorkspace_)
-                    && (!window_['focused']))
-                || ((thisWindow_['ws'] == this.currentWorkspace_)
-                    && (window_['state'] != 'minimized'));
+            if (thisWindow_['ws'] == this.currentWorkspace_) {
+              return window_['state'] == thisWindow_['state'];
+            } else {
+              return window_['state'] == 'minimized';
+            }
           }
           return false;
         });
