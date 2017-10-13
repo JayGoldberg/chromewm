@@ -17,7 +17,7 @@ This Chrome™ browser extension provides two windows management functions:
 - **Display Notifications**: To Notify when switching to another workspace.
 - **Read your browsing history**: To recover each window's workspace assignment
 after a reboot or browser restart.  
-It creates a unique hash number for each window based on the amount of tabs open and the url of the last tab.
+It creates a unique hash number for each window based on the amount of tabs open and the url of the last tab, and this permission is needed in order to get that information.
 
 
 ## Use Guide
