@@ -338,18 +338,11 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
         h: workArea['left'] + tileSize.width,
         v: workArea['top'] + tileSize.height
       };
-      var newSize = {
-        'height': window_['height'],
-        'left': window_['left'],
-        'top': window_['top'],
-        'width': window_['width']
-      };
-
+      var newSize = {};
       switch(movement) {
         case 'left':
           newSize['left'] = workArea['left'];
-          if (window_['left'] == workAreaCenter.h &&
-              window_['width'] == tileSize.width) {
+          if (window_['left'] == workAreaCenter.h) {
             newSize['width'] = workArea['width'];
           } else {
             newSize['width'] = tileSize.width;
@@ -365,15 +358,17 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
           }
           break;
         case 'up':
-          newSize['top'] = workArea['top'];
-          if (window_['height'] == tileSize.height) {
-            if (window_['top'] == workArea['top']) {
-              newSize['state'] = 'maximized';
-            } else if (window_['top'] == workAreaCenter.v) {
-            newSize['height'] = workArea['height'];
-            }
+          if (window_['state'] == 'maximized') return;
+          if (window_['top'] == workArea['top'] &&
+              window_['height'] == tileSize.height) {
+            newSize['state'] = 'maximized';
           } else {
-            newSize['height'] = tileSize.height;
+            newSize['top'] = workArea['top'];
+            if (window_['height'] != tileSize.height) {
+              newSize['height'] = tileSize.height;
+            } else {
+              newSize['height'] = workArea['height'];
+            }
           }
           break;
         case 'down':
@@ -390,9 +385,17 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
       };
 
       if (window_['state'] == 'maximized') {
-        chrome.windows.update(window_['id'], {'state': 'normal'});
+        chrome.windows.update(window_['id'], {'state': 'normal'}, () => {
+          if (movement == 'left') {
+            chrome.windows.update(window_['id'], {'left': workArea['left']+1});
+          }
+          chrome.windows.update(window_['id'], newSize);
+        });
+      } else if (newSize['state'] == 'maximized') {
+        chrome.windows.update(window_['id'], {'state': 'maximized'});
+      } else {
+        chrome.windows.update(window_['id'], newSize);
       }
-      chrome.windows.update(window_['id'], newSize);
       this.saveWindowSize_(window_['id']);
     })
     .catch(err => {
