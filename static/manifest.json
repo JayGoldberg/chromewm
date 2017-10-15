@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Windows Manager for Google Chrome™",
   "description": "Allows to tile Chrome™ windows and emulate workspaces",
-  "version": "0.9.6",
+  "version": "0.9.6.1",
   "icons":{
     "16": "icon-16.png",
     "48": "icon-48.png",

@@ -338,7 +338,12 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
         h: workArea['left'] + tileSize.width,
         v: workArea['top'] + tileSize.height
       };
-      var newSize = {};
+      var newSize = {
+        'left': window_['left'],
+        'height': window_['height'],
+        'top': window_['top'],
+        'width': window_['width']
+      };
       switch(movement) {
         case 'left':
           newSize['left'] = workArea['left'];
