@@ -1,5 +1,4 @@
 bin
 bazel*
 .bazelrc
-WORKSPACE
-BUILD
+tox20.sh

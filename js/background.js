@@ -388,7 +388,6 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
         default:
           return;
       };
-
       if (window_['state'] == 'maximized') {
         chrome.windows.update(window_['id'], {'state': 'normal'}, () => {
           if (movement == 'left') {
@@ -404,7 +403,7 @@ chromewm.background.prototype.tileWindow_ = async function(movement) {
       this.saveWindowSize_(window_['id']);
     })
     .catch(err => {
-      console.log('ERROR: Unable to get Display work area', err);
+      console.error('ERROR: Unable to get Display work area', err);
     });
   });
 }
@@ -424,10 +423,10 @@ chromewm.background.prototype.getDisplayWorkArea_ = function(windowId) {
     chrome.system.display.getInfo( (displays) => {
       chrome.windows.get(windowId, (window_) => {
         displayInFocus = goog.array.find(displays, (display, i, a) => {
-          return (window_['left'] <
-              (display['workArea']['left'] + display['workArea']['width']))
-              && (window_['top'] <
-              (display['workArea']['top'] + display['workArea']['height']))
+          return ((window_['left'] >= display['workArea']['left']) &&
+              (window_['left'] < display['workArea']['left'] + display['workArea']['width']) &&
+              (window_['top'] >= display['workArea']['top']) &&
+              (window_['top'] < display['workArea']['top'] + display['workArea']['height']));
         });
         if (goog.object.containsKey(displayInFocus, 'workArea')) {
           resolve(displayInFocus['workArea'])
