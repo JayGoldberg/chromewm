@@ -97,14 +97,14 @@ chromewm.background.prototype.Init = function() {
         });
       this.db_.delAllByStore('windows');
       this.db_.addToStore(this.windows_);
-      this.showWorkspace_(1);
+      this.showWorkspace_(1); //TODO(educampi): Only if it's not an extension update.
       this.setListeners_();
       });
     }).catch((error) => {
-      console.log('CRITICAL ERROR: Unable to get Windows from Database', error);
+      console.error('CRITICAL ERROR: Unable to get Windows from Database', error);
     });
   }).catch((error) => {
-    console.log('CRITICAL ERROR: Unable to connect to the Database', error);
+    console.error('CRITICAL ERROR: Unable to connect to the Database', error);
   });
 }
 
