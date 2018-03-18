@@ -57,54 +57,43 @@ chromewm.background = function() {
 chromewm.background.prototype.Init = function() {
   DEBUG_CALLS && console.log('CALL: Init()');
 
-  var workspaceQty_ = this.storage_.get('workspaceQty_');
-  if (!goog.isNull(workspaceQty_)) {
-    this.maxWorkspaces_ = goog.string.parseInt(workspaceQty_);
-  }
+  var lastActiveWorkspace = this.storage_.get('lastActiveWorkspace');
+  var isNewInstallation = goog.isNull(lastActiveWorkspace);
+
+  this.maxWorkspaces_ = goog.string.parseInt(
+      this.storage_.get('workspaceQty_') || 4);
 
   this.db_.getDB('chromewm', 1, [{'name': 'windows', 'keyPath': 'id'}])
   .then( () => {
     this.areWindowsLoaded_()
-    .then(savedWindows_ => {
-      chrome.windows.getAll({'populate': true}, (windows_) => {
-        goog.array.forEach(windows_, (window_, i, a) => {
-          var tabs_ = goog.string.hashCode(
-              window_['tabs'].length.toString() +
-              goog.array.last(window_['tabs'])['url']);
+    .then((allWindows) => {
+      var dbWindows = allWindows['dbWindows'];
+      /** @type {!Array<Object<?>>} openWindows */
+      var openWindows = allWindows['openWindows'];
+      this.mergeWindowsToDb_(openWindows, dbWindows);
 
-          var srcWindow = goog.array.find(savedWindows_, (sW_, i, a) => {
-              return sW_['tabs'] == tabs_;
-          });
-          if (!srcWindow) srcWindow = window_;
-
-          var windowToSave_ = {
-            'focused': srcWindow['focused'],
-            'height': srcWindow['height'],
-            'id': window_['id'],
-            'left': srcWindow['left'],
-            'state': window_['state'],
-            'tabs': tabs_,
-            'top': srcWindow['top'],
-            'width': srcWindow['width'],
-            'ws': 1
-          }
-          if (typeof srcWindow['ws'] !== 'undefined') {
-            windowToSave_['ws'] = srcWindow['ws'];
-            windowToSave_['state'] = srcWindow['state'];
-          }
-
-          this.windows_.push(windowToSave_);
+      if (isNewInstallation) {
+         this.currentWorkspace_ = 1;
+      } else {
+        var isAnUpgrade = goog.array.every(openWindows, (openWindow, i, a) => {
+            return goog.array.some(dbWindows, (dbWindow, i, a) => {
+                return openWindow['id'] == dbWindow['id'];
+            });
         });
-      this.db_.delAllByStore('windows');
-      this.db_.addToStore(this.windows_);
-      this.showWorkspace_(1); //TODO(educampi): Only if it's not an extension update.
+        if (isAnUpgrade) {
+          this.currentWorkspace_ = lastActiveWorkspace;
+          chrome.browserAction.setIcon({
+              'path': "icon-38-" + lastActiveWorkspace + ".png"});
+        } else {
+          this.showWorkspace_(lastActiveWorkspace);
+        }
+      }
       this.setListeners_();
-      });
     }).catch((error) => {
-      console.error('CRITICAL ERROR: Unable to get Windows from Database', error);
+      console.error('ERROR: Unable to get Windows from Database',  error);
     });
   }).catch((error) => {
-    console.error('CRITICAL ERROR: Unable to connect to the Database', error);
+    console.error('ERROR: Unable to connect to the Database', error);
   });
 }
 
@@ -120,11 +109,13 @@ chromewm.background.prototype.areWindowsLoaded_ = function() {
 
   return new Promise((resolve, reject) => {
     var timer = setInterval( () => {
-      chrome.windows.getAll({'populate': true}, (windows_) => {
-        if ((windows_.length > 1) || (windows_[0]['tabs'].length > 1)) {
+      chrome.windows.getAll({'populate': true}, (openWindows) => {
+        if ((openWindows.length > 1) || (openWindows[0]['tabs'].length > 1)) {
           clearInterval(timer);
           this.db_.getAllByStore('windows')
-            .then(resolve)
+            .then((dbWindows) => {
+                resolve({'dbWindows': dbWindows, 'openWindows': openWindows});
+             })
             .catch(reject);
         }
       });
@@ -132,6 +123,47 @@ chromewm.background.prototype.areWindowsLoaded_ = function() {
 
     setTimeout(reject, 10 * 60 * 1000);
   });
+}
+
+
+/**
+ * @desc Merges open windows to the database and buils this.windows_ array
+ * @param {!Array<Object<?>>} openWindows - Currently open windows
+ * @param {!Array<Object<?>>} dbWindows - Windows currently in the database
+ * @private
+ */
+chromewm.background.prototype.mergeWindowsToDb_ =
+    function(openWindows, dbWindows) {
+  goog.array.forEach(openWindows, (openWindow, i, a) => {
+    var tabs = goog.string.hashCode(
+        openWindow['tabs'].length.toString() +
+        goog.array.last(openWindow['tabs'])['url']);
+
+    var srcWindow = goog.array.find(dbWindows, (dbWindow, i, a) => {
+        return dbWindow['tabs'] == tabs;
+    });
+    if (!srcWindow) srcWindow = openWindow;
+
+    var windowToSave = {
+      'focused': srcWindow['focused'],
+      'height': srcWindow['height'],
+      'id': openWindow['id'],
+      'left': srcWindow['left'],
+      'state': openWindow['state'],
+      'tabs': tabs,
+      'top': srcWindow['top'],
+      'width': srcWindow['width'],
+      'ws': 1
+    }
+    if (typeof srcWindow['ws'] !== 'undefined') {
+      windowToSave['ws'] = srcWindow['ws'];
+      windowToSave['state'] = srcWindow['state'];
+    }
+
+    this.windows_.push(windowToSave);
+  });
+  this.db_.delAllByStore('windows');
+  this.db_.addToStore(this.windows_);
 }
 
 
@@ -423,10 +455,11 @@ chromewm.background.prototype.getDisplayWorkArea_ = function(windowId) {
     chrome.system.display.getInfo( (displays) => {
       chrome.windows.get(windowId, (window_) => {
         displayInFocus = goog.array.find(displays, (display, i, a) => {
-          return ((window_['left'] >= display['workArea']['left']) &&
-              (window_['left'] < display['workArea']['left'] + display['workArea']['width']) &&
-              (window_['top'] >= display['workArea']['top']) &&
-              (window_['top'] < display['workArea']['top'] + display['workArea']['height']));
+          var workArea = display['workArea'];
+          return ((window_['left'] >= workArea['left']) &&
+              (window_['left'] < workArea['left'] + workArea['width']) &&
+              (window_['top'] >= workArea['top']) &&
+              (window_['top'] < workArea['top'] + workArea['height']));
         });
         if (goog.object.containsKey(displayInFocus, 'workArea')) {
           resolve(displayInFocus['workArea'])
@@ -513,8 +546,7 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
       }
       if (thisWindow_['state'] == 'minimized') {
         minimizedWindowId = thisWindow_['id'];
-      }
-      if (thisWindow_['state'] != 'minimized') {
+      } else {
         DEBUG_WS && console.log('WS: SHOWING:', thisWindow_);
         chrome.windows.update(thisWindow_['id'], {'focused': true});
         chrome.windows.update(thisWindow_['id'], {
@@ -537,6 +569,7 @@ chromewm.background.prototype.showWorkspace_ = function(newWorkspace) {
     chrome.windows.update(focusedWindowId, {'focused': true});
   }
   this.currentWorkspace_ = newWorkspace;
+  this.storage_.set('lastActiveWorkspace', newWorkspace);
   this.showWsTransition_(newWorkspace);
 
   var timer = setInterval( async () => {
