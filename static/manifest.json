@@ -54,17 +54,17 @@
       "description": "Previous workspace: (Alt+Z)"
     },
     "ws-1": {
-      "description": "Workspace 1 (Ctrl+Shift+1)"
+      "description": "Workspace 1"
     },
     "ws-2": {
-      "description": "Workspace 2 (Ctrl+Shift+2)"
+      "description": "Workspace 2"
     },
     "ws-3": {
-      "description": "Workspace 3 (Ctrl+Shift+3)"
+      "description": "Workspace 3"
     },
     "ws-4": {
-      "description": "Workspace 4 (Ctrl+Shift+4)"
-    },
+      "description": "Workspace 4"
+    }
   },
   "permissions": [
     "tabs",
