@@ -247,13 +247,13 @@ chromewm.background.prototype.onCommand_ = function(command) {
           this.showWorkspace_(1);
           break;
         case '2':
-          this.showWorkspace_(1);
+          this.showWorkspace_(2);
           break;
         case '3':
-          this.showWorkspace_(1);
+          this.showWorkspace_(3);
           break;
         case '4':
-          this.showWorkspace_(1);
+          this.showWorkspace_(4);
       }
       break;
   }
