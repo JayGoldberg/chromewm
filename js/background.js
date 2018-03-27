@@ -242,6 +242,18 @@ chromewm.background.prototype.onCommand_ = function(command) {
           break;
         case 'prev':
           this.showWorkspace_(this.currentWorkspace_ - 1);
+          break;
+        case '1':
+          this.showWorkspace_(1);
+          break;
+        case '2':
+          this.showWorkspace_(1);
+          break;
+        case '3':
+          this.showWorkspace_(1);
+          break;
+        case '4':
+          this.showWorkspace_(1);
       }
       break;
   }
